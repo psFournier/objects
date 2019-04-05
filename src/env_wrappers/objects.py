@@ -10,6 +10,9 @@ class Objects(Wrapper):
         self.nbObjects = self.env.nbObjects
         self.stats = {'changes': 0}
 
+    def step(self, pairObjAction):
+        self.env.step(pairObjAction)
+
     # def reset(self, state):
     #     exp = {}
     #     exp['s0'] = np.expand_dims(state, axis=0)

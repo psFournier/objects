@@ -92,32 +92,36 @@ class Objects(Env):
         return res
 
 if __name__ == '__main__':
-    env = Objects(nbObjects=100)
+    env = Objects(nbObjects=1)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     xs, ys, zs, cs = [], [], [], []
-    for ep in range(50):
+    actions = np.random.randint(6, size=50)
+    for ep in range(10):
         s = env.reset()
+        env.objects[0].state += np.random.normal(0, 0.01, 3)
         obj = np.random.choice(env.nbObjects)
         xs.append(env.objects[obj].state[0])
         ys.append(env.objects[obj].state[1])
         zs.append(env.objects[obj].state[2])
-        cs.append(cm.hot(obj/env.nbObjects))
-        for step in range(100):
-            act = (obj, np.random.choice(5))
+        cs.append(cm.hot(ep/10))
+        for step in range(50):
+            act = (obj, actions[step])
             s = env.step(act)
             xs.append(env.objects[obj].state[0])
             ys.append(env.objects[obj].state[1])
             zs.append(env.objects[obj].state[2])
-            cs.append(cm.hot(obj/env.nbObjects))
+            cs.append(cm.hot(ep/10))
+        ax.plot(xs, ys, zs, c=cm.hot(ep/10))
+        xs, ys, zs, cs = [], [], [], []
 
-    ax.scatter(xs, ys, zs, c=cs, s=2)
+    # ax.scatter(xs, ys, zs, c=cs, s=2)
 
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
-    ax.set_xlim(-1,1)
-    ax.set_ylim(-1,1)
-    ax.set_zlim(-1,1)
+    # ax.set_xlim(-1,1)
+    # ax.set_ylim(-1,1)
+    # ax.set_zlim(-1,1)
 
     plt.show()

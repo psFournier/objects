@@ -74,7 +74,7 @@ if __name__ == '__main__':
         object = agent.pick_object()
         for _ in range(OBJECT_STEPS):
             action = agent.choose_action()
-            env.step((object, action))
+            wrapper.step((object, action))
             env_step += 1
         agent.train()
 
