@@ -24,25 +24,24 @@ class Dqn(object):
         S = Input(shape=self.S_dim)
         A = Input(shape=(1,), dtype='uint8')
         G = Input(shape=self.S_dim)
-        W = Input(shape=self.S_dim)
         TARGETS = Input(shape=(1,))
 
         ### Q values and action models
-        qvals = self.create_critic_network(S, G, W)
-        self.model = Model([S, G, W], qvals)
-        self.qvals = K.function(inputs=[S, G, W], outputs=[qvals], updates=None)
+        qvals = self.create_critic_network(S, G)
+        self.model = Model([S, G], qvals)
+        self.qvals = K.function(inputs=[S, G], outputs=[qvals], updates=None)
         actionProbs = K.softmax(qvals)
-        self.actionProbs = K.function(inputs=[S, G, W], outputs=[actionProbs], updates=None)
+        self.actionProbs = K.function(inputs=[S, G], outputs=[actionProbs], updates=None)
         actionFilter = K.squeeze(K.one_hot(A, self.num_A), axis=1)
         qval = K.sum(actionFilter * qvals, axis=1, keepdims=True)
-        self.qval = K.function(inputs=[S, G, W, A], outputs=[qval], updates=None)
+        self.qval = K.function(inputs=[S, G, A], outputs=[qval], updates=None)
 
         ### DQN loss
         td_errors = qval - TARGETS
         l2_loss = K.square(td_errors)
         loss = K.mean(l2_loss)
 
-        inputs = [S, A, G, W, TARGETS]
+        inputs = [S, A, G, TARGETS]
         updates = Adam(lr=0.001).get_updates(loss, self.model.trainable_weights)
         metrics = [loss, qval, td_errors]
         self.train = K.function(inputs, metrics, updates)
@@ -51,13 +50,12 @@ class Dqn(object):
         S = Input(shape=self.S_dim)
         A = Input(shape=(1,), dtype='uint8')
         G = Input(shape=self.S_dim)
-        W = Input(shape=self.S_dim)
-        targetQvals = self.create_critic_network(S, G, W)
-        self.targetmodel = Model([S, G, W], targetQvals)
-        self.targetqvals = K.function(inputs=[S, G, W], outputs=[targetQvals], updates=None)
+        targetQvals = self.create_critic_network(S, G)
+        self.targetmodel = Model([S, G], targetQvals)
+        self.targetqvals = K.function(inputs=[S, G], outputs=[targetQvals], updates=None)
         actionFilter = K.squeeze(K.one_hot(A, self.num_A), axis=1)
         targetQval = K.sum(actionFilter * targetQvals, axis=1, keepdims=True)
-        self.targetqval = K.function(inputs=[S, G, W, A], outputs=[targetQval], updates=None)
+        self.targetqval = K.function(inputs=[S, G, A], outputs=[targetQval], updates=None)
 
     def target_train(self):
         weights = self.model.get_weights()
@@ -66,9 +64,9 @@ class Dqn(object):
             target_weights[i] = self.tau * weights[i] + (1 - self.tau) * target_weights[i]
         self.targetmodel.set_weights(target_weights)
 
-    def create_critic_network(self, S, G, W):
+    def create_critic_network(self, S, G):
         # TODO split S, apply hidden to w separately
-        h = concatenate([S, G, W])
+        h = concatenate([S, G])
         for l in [128, 128]:
             h = Dense(l, activation="relu",
                       kernel_initializer=lecun_uniform()
@@ -88,3 +86,15 @@ class Dqn(object):
         #     lambda a: K.expand_dims(a[:, 0], axis=-1) + a[:, 1:] - K.mean(a[:, 1:], keepdims=True, axis=1),
         #     output_shape=(self.num_A,))(ValAndAdv)
         return Q_values
+
+    def compute_qvals(self, S, G):
+        S = np.reshape(S, (-1,)+self.S_dim)
+        G = np.reshape(G, (-1,)+self.S_dim)
+        qvals = self.qvals([S, G])[0].squeeze()
+        return qvals
+
+    def compute_target_qvals(self, S, G):
+        S = np.reshape(S, (-1,)+self.S_dim)
+        G = np.reshape(G, (-1,)+self.S_dim)
+        target_qvals = self.targetqvals([S, G])[0].squeeze()
+        return target_qvals

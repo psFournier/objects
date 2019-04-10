@@ -34,7 +34,7 @@ Options:
   --rndv VAL               [default: 0]
   --demo VAL               [default: -1]
   --tutoronly VAL          [default: -1]
-  --initq VAL              [default: 0]
+  --initq VAL              [default: -100]
   --layers VAL             [default: 128,128]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
@@ -51,32 +51,17 @@ Options:
 if __name__ == '__main__':
 
     args = docopt(help)
-    MAX_STEPS = int(args['--max_steps'])
-    OBJECT_STEPS = int(args['--object_steps'])
-    EVAL_FREQ = int(args['--eval_freq'])
-
     log_dir = build_logger(args)
     loggerTB = Logger(dir=log_dir,
                       format_strs=['tensorboard_{}'.format(int(args['--eval_freq'])),
                                    'stdout'])
     loggerJSON = Logger(dir=log_dir,
                         format_strs=['json'])
+
     env, wrapper = make(args['--env'], args)
     dqn = Dqn(wrapper.state_dim, wrapper.action_dim)
     agent = Agent(args, wrapper, dqn)
-
-    env_step = 0
-    n_episodes = 0
-    accumulated_reward = 0
-    off_policyness = 0
-    while env_step < MAX_STEPS:
-        env.reset()
-        object = agent.pick_object()
-        for _ in range(OBJECT_STEPS):
-            action = agent.choose_action()
-            wrapper.step((object, action))
-            env_step += 1
-        agent.train()
+    agent.learn()
 
         #     r, term = agent.step(state, r, term)
         #     if len(agent.buffer) > 10000:

@@ -52,21 +52,108 @@ class Agent(object):
         self._lambda = float(args['--lambda'])
         self.nstep = int(args['--nstep'])
         self.IS = args['--IS']
-        self.buffer = ReplayBuffer(limit=int(5e5), N=self.wrapper.nbObjects)
+        self.buffer = ReplayBuffer(limit=int(5e5), N=self.wrapper.env.nbObjects)
         self.batch_size = 64
         self.train_step = 0
-        self.current_exp = {}
-        self.current_trajectory = []
-        self.update_stats = {'offpolicyness': 0, 'loss': 0, 'target': 0, 'qval': 0, 'utility': 0, 'term': 0, 'tderror':0, 'update': 0, 'min_prob':0, 'max_prob':0, 'regret':0}
+        self.update_stats = {'offpolicyness': 0, 'loss': 0, 'target': 0, 'qval': 0, 'utility': 0, 'mean_r': 0, 'tderror':0, 'update': 0, 'min_prob':0, 'max_prob':0, 'regret':0}
         self.env_stats = {'reward'}
+        self.epsilon = 0.2
+        self.eta = 0.2
+        self.beta = 3
+        self.nb_attempts = 10
+        self.experts_weights = np.array([1,1])
+        self.LPs = np.zeros(self.wrapper.env.nbObjects)
+        uni = 1/self.wrapper.env.nbObjects * np.ones(self.wrapper.env.nbObjects)
+        self.expert_probs = np.vstack([softmax(self.LPs, theta=self.beta),
+                                       uni])
 
-    def pick_object(self):
-        self.current_object = np.random.choice(self.wrapper.nbObjects)
-        return self.current_object
+    def learn(self):
+        for object in range(self.wrapper.env.nbObjects):
+            self.wrapper.env.reset()
+            goal = np.random.uniform(-1, 1, self.wrapper.env.nbFeatures)
+            for _ in range(100):
+                state0 = self.wrapper.get_state(object)
+                qvals = self.model.compute_qvals(state0, goal)
+                probs = softmax(qvals, theta=1)
+                action = np.random.choice(self.wrapper.env.nbActions, p=probs)
+                mu0 = probs[action]
+                self.wrapper.step((object, action))
+                state1 = self.wrapper.get_state(object)
+                transition = {'s0': state0,
+                              'a0': action,
+                              's1': state1,
+                              'g': goal,
+                              'mu0': mu0,
+                              'object': object,
+                              'next': None}
+                self.buffer.append(transition)
 
-    def choose_action(self):
-        self.current_action = np.random.choice(self.wrapper.action_dim)
-        return self.current_action
+        for ep in range(1000):
+            weights_sum = np.sum(self.experts_weights)
+            probs = (1 - self.epsilon) * np.dot(self.experts_weights, self.expert_probs) / weights_sum
+            probs += self.epsilon / self.wrapper.env.nbObjects
+            object = np.random.choice(self.wrapper.env.nbObjects, p=probs)
+            learning_progress = self.play(object)
+            for i, w in enumerate(self.experts_weights):
+                a = self.epsilon * learning_progress * self.expert_probs[i][object]
+                b = self.wrapper.env.nbObjects * probs[object]
+                self.experts_weights[i] *= np.exp(a/b)
+            self.LPs[object] += self.eta * (learning_progress - self.LPs[object])
+            self.expert_probs[0] = softmax(self.LPs - min(self.LPs), theta=self.beta)
+
+    def play(self, object):
+
+        transitions_for_eval = self.buffer.sample(100 * self.wrapper.env.nbObjects)
+        states = np.vstack([t['s0'] for t in transitions_for_eval])
+        goals = np.vstack([t['g'] for t in transitions_for_eval])
+        avg_qvals_before_play = np.mean(self.model.compute_qvals(states, goals))
+
+        for _ in range(self.nb_attempts):
+            self.wrapper.env.reset()
+            rnd_exp_from_object = self.buffer.sample(1, object)
+            goal = rnd_exp_from_object[0]['s1']
+            trajectory = []
+            for _ in range(100):
+                state0 = self.wrapper.get_state(object)
+                qvals = self.model.compute_qvals(state0, goal)
+                probs = softmax(qvals, theta=1)
+                self.update_stats['min_prob'] += min(probs)
+                self.update_stats['max_prob'] += max(probs)
+                action = np.random.choice(self.wrapper.env.nbActions, p=probs)
+                mu0 = probs[action]
+                self.wrapper.step((object, action))
+                state1 = self.wrapper.get_state(object)
+                transition = {'s0': state0,
+                              'a0': action,
+                              's1': state1,
+                              'g': goal,
+                              'mu0': mu0,
+                              'object': object,
+                              'next': None}
+                self.buffer.append(transition)
+                #TODO check everything is fine here
+
+        for _ in range(100 * self.nb_attempts):
+            exps = self.buffer.sample(self.batch_size, object)
+            nStepExpes = self.getNStepSequences(exps)
+            nStepExpes = self.getQvaluesAndBootstraps(nStepExpes)
+            states, actions, goals, targets, ros = self.getTargetsSumTD(nStepExpes)
+            inputs = [states, actions, goals, targets]
+            loss, qval, td_errors = self.model.train(inputs)
+            self.train_step += 1
+            self.update_stats['update'] += 1
+            self.update_stats['target'] += np.mean(targets)
+            self.update_stats['offpolicyness'] += np.mean(ros)
+            self.update_stats['loss'] += loss
+            self.update_stats['qval'] += np.mean(qval)
+            self.update_stats['tderror'] += np.mean(td_errors)
+            self.model.target_train()
+
+        avg_qvals_after_play = np.mean(self.model.compute_qvals(states, goals))
+
+        learning_progress = avg_qvals_after_play - avg_qvals_before_play
+
+        return learning_progress
 
     # def end_episode(self):
     #     l = len(self.current_trajectory)
@@ -113,60 +200,6 @@ class Agent(object):
     #         self.buffer.append(exp)
     #     self.current_trajectory.clear()
 
-    def reset(self, state, w=None, g=None):
-        self.current_exp['s0'] = np.expand_dims(state, axis=0)
-        if w is None:
-            self.current_exp['w'] = np.expand_dims(self.wrapper.get_w(), axis=0)
-        else:
-            self.current_exp['w'] = np.expand_dims(w, axis=0)
-        if g is None:
-            self.current_exp['g'] = np.expand_dims(self.wrapper.get_g(), axis=0)
-        else:
-            self.current_exp['g'] = np.expand_dims(g, axis=0)
-
-    def act(self):
-        qvals = self.model.qvals([self.current_exp['s0'],
-                                  self.current_exp['g'],
-                                  self.current_exp['w']])[0].squeeze()
-        # theta = max(0, 10*self.train_step / 5e4)
-        probs = softmax(qvals, theta=1)
-        self.update_stats['min_prob'] += min(probs)
-        self.update_stats['max_prob'] += max(probs)
-        action = np.random.choice(range(qvals.shape[0]), p=probs)
-        self.update_stats['regret'] += probs[self.wrapper.env.opt_action(0)[0]] / probs[action]
-        self.current_exp['mu0'] = probs[action]
-        self.current_exp['a0'] = np.expand_dims(action, axis=1)
-        return action
-
-    def step(self, state, r, term):
-        self.current_exp['s1'] = np.expand_dims(state, axis=0)
-        #TODO catch not defined in base env and set r and term to env values
-        self.current_exp['reward'], self.current_exp['terminal'] = self.wrapper.get_r(self.current_exp['s1'],
-                                                                             self.current_exp['g'],
-                                                                             self.current_exp['w'])
-        self.current_trajectory.append(self.current_exp.copy())
-        self.current_exp['s0'] = np.expand_dims(state, axis=0)
-        return self.current_exp['reward'], self.current_exp['terminal']
-
-
-    def train(self):
-
-        return
-        # exps = self.buffer.sample(self.batch_size)
-        # nStepExpes = self.getNStepSequences(exps)
-        # nStepExpes = self.getQvaluesAndBootstraps(nStepExpes)
-        # states, actions, goals, weights, targets, ros = self.getTargetsSumTD(nStepExpes)
-        # inputs = [states, actions, goals, weights, targets]
-        # loss, qval, td_errors = self.model.train(inputs)
-        # self.train_step += 1
-        # self.update_stats['update'] += 1
-        # self.update_stats['target'] += np.mean(targets)
-        # self.update_stats['offpolicyness'] += np.mean(ros)
-        # self.update_stats['loss'] += loss
-        # self.update_stats['qval'] += np.mean(qval)
-        # self.update_stats['tderror'] += np.mean(td_errors)
-        # self.model.target_train()
-
     def getNStepSequences(self, exps):
         nStepSeqs = []
         for exp in exps:
@@ -179,41 +212,30 @@ class Agent(object):
             nStepSeqs.append(nStepSeq)
         return nStepSeqs
 
-    def getQvaluesAndBootstraps(self, nStepExpes, g=None, w=None):
+    def getQvaluesAndBootstraps(self, nStepExpes):
 
-        states, gs, ws = [], [], []
+        states, goals = [], []
         for nStepExpe in nStepExpes:
-
             first = nStepExpe[0]
-            utility = first['u'].any()
-            if utility:
-                self.update_stats['utility'] += 1
             l = len(nStepExpe)
-            if g is None or w is None:
-                if utility and np.random.rand() < 0.75:
-                    g, w = first['vg'], first['u']
-                else:
-                    g, w = first['g'], first['w']
-            gs += [g] * (l+1)
-            ws += [w] * (l+1)
-
+            g = first['g']
+            goals += [g] * (l+1)
             for exp in nStepExpe:
                 states.append(exp['s0'])
             states.append(nStepExpe[-1]['s1'])
 
         states = np.vstack(states)
-        gs = np.vstack(gs)
-        ws = np.vstack(ws)
+        goals = np.vstack(goals)
 
-        rewards, terminals = self.wrapper.get_r(states, gs, ws)
-        self.update_stats['term'] += np.mean(terminals)
-        qvals = self.model.qvals([states, gs, ws])[0]
-        target_qvals = self.model.targetqvals([states, gs, ws])[0]
+        rewards, terminals = self.wrapper.get_r(states, goals)
+        self.update_stats['mean_r'] += np.mean(rewards)
+        qvals = self.model.compute_qvals(states, goals)
+        target_qvals = self.model.compute_target_qvals(states, goals)
         actionProbs = softmax(qvals, axis=1, theta=10)
 
         i = 0
         for nStepExpe in nStepExpes:
-            nStepExpe[0]['g'], nStepExpe[0]['w'] = gs[i], ws[i]
+            nStepExpe[0]['g'] = goals[i]
             for exp in nStepExpe:
                 exp['q'] = qvals[i]
                 exp['tq'] = target_qvals[i]
@@ -232,7 +254,6 @@ class Agent(object):
         states = []
         actions = []
         goals = []
-        weights = []
         ros = []
         for nStepExpe in nStepExpes:
             tdErrors = []
@@ -264,10 +285,9 @@ class Agent(object):
             states.append(exp['s0'])
             actions.append(exp['a0'])
             goals.append(exp['g'])
-            weights.append(exp['w'])
             ros.append(np.mean(cs))
             delta = np.sum(np.multiply(tdErrors, np.cumprod(cs)))
             targets.append(exp['q'][exp['a0']] + delta)
 
-        res = [np.vstack(x) for x in [states, actions, goals, weights, targets, ros]]
+        res = [np.vstack(x) for x in [states, actions, goals, targets, ros]]
         return res

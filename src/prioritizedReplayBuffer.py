@@ -42,22 +42,21 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self._storage)
 
-    def append(self, item):
+    def append(self, transition):
         if self._next_idx >= len(self._storage):
-            self._storage.append(item)
+            self._storage.append(transition)
         else:
-            for task in np.where(self._storage[self._next_idx]['u'])[0]:
-                self._buffers[task].popOrNot(self._next_idx)
-            self._storage[self._next_idx] = item
-        for task in np.where(item['u'])[0]:
-            self._buffers[task].append(self._next_idx)
+            object = self._storage[self._next_idx]['object']
+            self._buffers[object].popOrNot(self._next_idx)
+            self._storage[self._next_idx] = transition
+        self._buffers[transition['object']].append(self._next_idx)
         self._next_idx = (self._next_idx + 1) % self._limit
 
-    def sample(self, batchsize, task=None):
-        if task is None:
+    def sample(self, batchsize, object=None):
+        if object is None:
             idxs = [np.random.randint(0, len(self._storage) - 1) for _ in range(batchsize)]
-        elif self._buffers[task]._numsamples >= batchsize:
-            idxs = self._buffers[task].sample(batchsize)
+        elif self._buffers[object]._numsamples >= batchsize:
+            idxs = self._buffers[object].sample(batchsize)
         else:
             raise RuntimeError
         exps = []

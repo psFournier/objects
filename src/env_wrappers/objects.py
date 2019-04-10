@@ -5,13 +5,23 @@ class Objects(Wrapper):
     def __init__(self, env, args):
         super(Objects, self).__init__(env)
         self.gamma = float(args['--gamma'])
-        # self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
-        # self.rTerm = 0 - float(args['--initq'])
-        self.nbObjects = self.env.nbObjects
+        self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
+        self.rTerm = 0 - float(args['--initq'])
         self.stats = {'changes': 0}
+
+    def get_state(self, object):
+        state = self.env.state
+        start = object * self.env.nbFeatures
+        object_state = state[start:start+self.env.nbFeatures]
+        return object_state
 
     def step(self, pairObjAction):
         self.env.step(pairObjAction)
+
+    def get_r(self, s, g):
+        d = np.linalg.norm(s-g, axis=-1)
+        r = (d < 0.01) * self.rTerm + (1 - (d < 0.01)) * self.rNotTerm
+        return r, np.zeros_like(r)
 
     # def reset(self, state):
     #     exp = {}
