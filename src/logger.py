@@ -5,6 +5,7 @@ import os.path as osp
 import json
 import time
 import datetime
+import numpy as np
 import tempfile
 import re
 import json_tricks
@@ -42,8 +43,10 @@ class HumanOutputFormat(OutputFormat):
         # Create strings for printing
         key2str = {}
         for (key, val) in sorted(kvs.items()):
-            if isinstance(val, float):
-                valstr = '%-8.3g' % (val,)
+            if isinstance(val, np.ndarray):
+                valstr = '|'.join(['%-.3g' % (v,) for v in val])
+            elif isinstance(val, float):
+                valstr = '%-2.3g' % (val,)
             else:
                 valstr = str(val)
             key2str[self._truncate(key)] = self._truncate(valstr)
@@ -93,15 +96,14 @@ class TensorBoardOutputFormat(OutputFormat):
     """
     Dumps key/value pairs into TensorBoard's numeric format.
     """
-    def __init__(self, dir, freq):
+    def __init__(self, dir):
         os.makedirs(dir, exist_ok=True)
-        self.freq = freq
         self.dir = dir
-        self.step = freq
+        self.step = 1
         prefix = 'events'
         path = osp.join(osp.abspath(dir), prefix)
         import tensorflow as tf
-        from tensorflow.python import pywrap_tensorflow        
+        from tensorflow.python import pywrap_tensorflow
         from tensorflow.core.util import event_pb2
         from tensorflow.python.util import compat
         self.tf = tf
@@ -113,12 +115,12 @@ class TensorBoardOutputFormat(OutputFormat):
         def summary_val(k, v):
             kwargs = {'tag': k, 'simple_value': float(v)}
             return self.tf.Summary.Value(**kwargs)
-        summary = self.tf.Summary(value=[summary_val(k, v) for k, v in kvs.items()])
+        summary = self.tf.Summary(value=[summary_val(k, v) for k, v in kvs.items() if np.isscalar(v)])
         event = self.event_pb2.Event(wall_time=time.time(), summary=summary)
         event.step = self.step # is there any reason why you'd want to specify the step?
         self.writer.WriteEvent(event)
         self.writer.Flush()
-        self.step += self.freq
+        self.step += 1
 
     def close(self):
         if self.writer:
@@ -128,7 +130,6 @@ class TensorBoardOutputFormat(OutputFormat):
 
 def make_output_format(format, ev_dir):
     os.makedirs(ev_dir, exist_ok=True)
-    pattern = re.compile("^tensorboard_([0-9]+)$")
     if format == 'stdout':
         return HumanOutputFormat(sys.stdout)
     elif format == 'log':
@@ -137,11 +138,11 @@ def make_output_format(format, ev_dir):
     elif format == 'json':
         json_file = open(osp.join(ev_dir, 'progress.json'), 'wt')
         return JSONOutputFormat(json_file)
-    elif pattern.match(format) is not None:
-        _, freq = format.split('_')
-        return TensorBoardOutputFormat(osp.join(ev_dir, 'tb'), int(freq))
+    elif format == 'TB':
+        return TensorBoardOutputFormat(osp.join(ev_dir, 'tb'))
     else:
         raise ValueError('Unknown format specified: %s' % (format,))
+
 
 # ================================================================
 # API

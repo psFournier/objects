@@ -1,159 +1,136 @@
 import numpy as np
 from prioritizedReplayBuffer import ReplayBuffer
-
-def softmax(X, theta=1.0, axis=None):
-    """
-    Compute the softmax of each element along an axis of X.
-
-    Parameters
-    ----------
-    X: ND-Array. Probably should be floats.
-    theta (optional): float parameter, used as a multiplier
-        prior to exponentiation. Default = 1.0
-    axis (optional): axis to compute values along. Default is the
-        first non-singleton axis.
-
-    Returns an array the same size as X. The result will sum to 1
-    along the specified axis.
-    """
-
-    # make X at least 2d
-    y = np.atleast_2d(X)
-
-    # find axis
-    if axis is None:
-        axis = next(j[0] for j in enumerate(y.shape) if j[1] > 1)
-
-    # multiply y against the theta parameter,
-    y = y * float(theta)
-
-    # subtract the max for numerical stability
-    y = y - np.expand_dims(np.max(y, axis=axis), axis)
-
-    # exponentiate y
-    y = np.exp(y)
-
-    # take the sum along the specified axis
-    ax_sum = np.expand_dims(np.sum(y, axis=axis), axis)
-
-    # finally: divide elementwise
-    p = y / ax_sum
-
-    # flatten if X was 1D
-    if len(X.shape) == 1: p = p.flatten()
-
-    return p
+from env_wrappers.registration import make
+from docopt import docopt
+from dqn import Controller
+from approximators import Predictor
+from logger import Logger, build_logger
+from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_evaluator, \
+    ApproxError_global_evaluator, ApproxError_objects_evaluator
+from objectSelectors import EXP4, RandomObjectSelector
+from goalSelectors import Uniform_goal_selector, Buffer_goal_selector
+from actionSelectors import Random_action_selector, NN_action_selector
+from utils import softmax
+from env_wrappers.registration import register
 
 class Agent(object):
-    def __init__(self, args, wrapper, model):
+    def __init__(self, args, env, wrapper, model, loggers):
+        self.env = env
         self.wrapper = wrapper
         self.model = model
+        self.buffer = ReplayBuffer(limit=int(5e5), N=self.wrapper.env.nbObjects)
+        self.loggers = loggers
+        self.env_step = 0
+        self.train_step = 0
+        self.train_stats = {'rho': 0, 'loss': 0, 'target_mean': 0, 'qval': 0, 'mean_reward': 0, 'tderror': 0}
+        self.env_stats = {}
+
         self._gamma = 0.99
         self._lambda = float(args['--lambda'])
         self.nstep = int(args['--nstep'])
         self.IS = args['--IS']
-        self.buffer = ReplayBuffer(limit=int(5e5), N=self.wrapper.env.nbObjects)
         self.batch_size = 64
-        self.train_step = 0
-        self.update_stats = {'offpolicyness': 0, 'loss': 0, 'target': 0, 'qval': 0, 'utility': 0, 'mean_r': 0, 'tderror':0, 'update': 0, 'min_prob':0, 'max_prob':0, 'regret':0}
-        self.env_stats = {'reward'}
-        self.epsilon = 0.2
-        self.eta = 0.2
-        self.beta = 3
-        self.nb_attempts = 10
-        self.experts_weights = np.array([1,1])
-        self.LPs = np.zeros(self.wrapper.env.nbObjects)
-        uni = 1/self.wrapper.env.nbObjects * np.ones(self.wrapper.env.nbObjects)
-        self.expert_probs = np.vstack([softmax(self.LPs, theta=self.beta),
-                                       uni])
+        self.env_steps = 50
+        self.train_steps = 100
+        self.episodes = 1000
+        self.log_freq = 10
 
-    def learn(self):
-        for object in range(self.wrapper.env.nbObjects):
-            self.wrapper.env.reset()
-            goal = np.random.uniform(-1, 1, self.wrapper.env.nbFeatures)
-            for _ in range(100):
-                state0 = self.wrapper.get_state(object)
-                qvals = self.model.compute_qvals(state0, goal)
-                probs = softmax(qvals, theta=1)
-                action = np.random.choice(self.wrapper.env.nbActions, p=probs)
-                mu0 = probs[action]
-                self.wrapper.step((object, action))
-                state1 = self.wrapper.get_state(object)
-                transition = {'s0': state0,
-                              'a0': action,
-                              's1': state1,
-                              'g': goal,
-                              'mu0': mu0,
-                              'object': object,
-                              'next': None}
-                self.buffer.append(transition)
+    def play(self, object, goal_selector, action_selector):
+        self.env.reset()
+        goal = goal_selector.select(object)
+        for _ in range(self.env_steps):
+            state0 = self.wrapper.get_state(object)
+            action, probs = action_selector.select(state0, goal)
+            mu0 = probs[action]
+            self.wrapper.step((object, action))
+            state1 = self.wrapper.get_state(object)
+            transition = {'s0': state0,
+                          'a0': action,
+                          's1': state1,
+                          'g': goal,
+                          'mu0': mu0,
+                          'object': object,
+                          'next': None}
+            self.buffer.append(transition)
+            self.env_step += 1
 
-        for ep in range(1000):
-            weights_sum = np.sum(self.experts_weights)
-            probs = (1 - self.epsilon) * np.dot(self.experts_weights, self.expert_probs) / weights_sum
-            probs += self.epsilon / self.wrapper.env.nbObjects
-            object = np.random.choice(self.wrapper.env.nbObjects, p=probs)
-            learning_progress = self.play(object)
-            for i, w in enumerate(self.experts_weights):
-                a = self.epsilon * learning_progress * self.expert_probs[i][object]
-                b = self.wrapper.env.nbObjects * probs[object]
-                self.experts_weights[i] *= np.exp(a/b)
-            self.LPs[object] += self.eta * (learning_progress - self.LPs[object])
-            self.expert_probs[0] = softmax(self.LPs - min(self.LPs), theta=self.beta)
+    def bootstrap(self, action_selector):
 
-    def play(self, object):
+        bootstrap_goal_selector = Uniform_goal_selector(self.env.nbFeatures)
 
-        transitions_for_eval = self.buffer.sample(100 * self.wrapper.env.nbObjects)
-        states = np.vstack([t['s0'] for t in transitions_for_eval])
-        goals = np.vstack([t['g'] for t in transitions_for_eval])
-        avg_qvals_before_play = np.mean(self.model.compute_qvals(states, goals))
+        for object in range(self.env.nbObjects):
 
-        for _ in range(self.nb_attempts):
-            self.wrapper.env.reset()
-            rnd_exp_from_object = self.buffer.sample(1, object)
-            goal = rnd_exp_from_object[0]['s1']
-            trajectory = []
-            for _ in range(100):
-                state0 = self.wrapper.get_state(object)
-                qvals = self.model.compute_qvals(state0, goal)
-                probs = softmax(qvals, theta=1)
-                self.update_stats['min_prob'] += min(probs)
-                self.update_stats['max_prob'] += max(probs)
-                action = np.random.choice(self.wrapper.env.nbActions, p=probs)
-                mu0 = probs[action]
-                self.wrapper.step((object, action))
-                state1 = self.wrapper.get_state(object)
-                transition = {'s0': state0,
-                              'a0': action,
-                              's1': state1,
-                              'g': goal,
-                              'mu0': mu0,
-                              'object': object,
-                              'next': None}
-                self.buffer.append(transition)
-                #TODO check everything is fine here
+            self.play(object=object,
+                      goal_selector=bootstrap_goal_selector,
+                      action_selector=action_selector)
 
-        for _ in range(100 * self.nb_attempts):
+    def train(self, object):
+
+        for _ in range(self.train_steps):
             exps = self.buffer.sample(self.batch_size, object)
-            nStepExpes = self.getNStepSequences(exps)
-            nStepExpes = self.getQvaluesAndBootstraps(nStepExpes)
-            states, actions, goals, targets, ros = self.getTargetsSumTD(nStepExpes)
-            inputs = [states, actions, goals, targets]
-            loss, qval, td_errors = self.model.train(inputs)
+            stats = self.model.train(exps)
             self.train_step += 1
-            self.update_stats['update'] += 1
-            self.update_stats['target'] += np.mean(targets)
-            self.update_stats['offpolicyness'] += np.mean(ros)
-            self.update_stats['loss'] += loss
-            self.update_stats['qval'] += np.mean(qval)
-            self.update_stats['tderror'] += np.mean(td_errors)
-            self.model.target_train()
+            for key, val in stats.items():
+                self.train_stats[key] += val
 
-        avg_qvals_after_play = np.mean(self.model.compute_qvals(states, goals))
+    def log(self, stats):
 
-        learning_progress = avg_qvals_after_play - avg_qvals_before_play
+        for logger in self.loggers:
+            logger.logkv('env_step', self.env_step)
+            logger.logkv('train_step', self.train_step)
+            for name, val in self.env_stats.items():
+                logger.logkv(name, val / (self.env_steps*self.log_freq))
+            for name, val in self.train_stats.items():
+                logger.logkv(name, val / (self.train_steps*self.log_freq))
+            for name, val in stats.items():
+                logger.logkv(name, val)
+            logger.dumpkvs()
+        for stats in [self.env_stats, self.train_stats]:
+            for name, val in stats.items():
+                stats[name] = 0
 
-        return learning_progress
+    def learn1(self, object_selector, goal_selector, action_selector):
+
+        self.bootstrap(action_selector)
+
+        for ep in range(self.episodes):
+
+            object_selector.evaluate()
+
+            object = np.random.choice(object_selector.K, p=object_selector.probs)
+
+            self.play(object, goal_selector, action_selector)
+
+            self.train(object)
+
+            object_selector.update(object)
+
+            if ep % self.log_freq == 0:
+                self.log(object_selector.stats)
+
+    def learn2(self, object_selector, goal_selector, action_selector):
+
+        for ep in range(self.episodes):
+
+            object = np.random.randint(self.env.nbObjects)
+
+            self.play(object, goal_selector, action_selector)
+
+            if ep % 100 == 0:
+                print(self.env_step)
+
+        for ep in range(self.episodes):
+
+            object_selector.evaluate()
+
+            object = np.random.choice(object_selector.K, p=object_selector.probs)
+
+            self.train(object)
+
+            object_selector.update(object)
+
+            if ep % self.log_freq == 0:
+                self.log(object_selector.stats)
 
     # def end_episode(self):
     #     l = len(self.current_trajectory)
@@ -200,94 +177,92 @@ class Agent(object):
     #         self.buffer.append(exp)
     #     self.current_trajectory.clear()
 
-    def getNStepSequences(self, exps):
-        nStepSeqs = []
-        for exp in exps:
-            nStepSeq = [exp]
-            i = 1
-            while i <= self.nstep - 1 and exp['next'] != None:
-                exp = exp['next']
-                nStepSeq.append(exp)
-                i += 1
-            nStepSeqs.append(nStepSeq)
-        return nStepSeqs
 
-    def getQvaluesAndBootstraps(self, nStepExpes):
+help = """
 
-        states, goals = [], []
-        for nStepExpe in nStepExpes:
-            first = nStepExpe[0]
-            l = len(nStepExpe)
-            g = first['g']
-            goals += [g] * (l+1)
-            for exp in nStepExpe:
-                states.append(exp['s0'])
-            states.append(nStepExpe[-1]['s1'])
+Usage: 
+  agent.py --env=<ENV> [options]
 
-        states = np.vstack(states)
-        goals = np.vstack(goals)
+Options:
+  --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
+  --initq VAL              [default: -100]
+  --layers VAL             [default: 128,128]
+  --her VAL                [default: 0]
+  --nstep VAL              [default: 1]
+  --alpha VAL              [default: 0]
+  --IS VAL                 [default: no]
+  --targetClip VAL         [default: 0]
+  --lambda VAL             [default: 0]
+  --nbObjects VAL          [default: 4]
+  --nbFeatures VAL         [default: 3]
+  --nbDependences VAL      [default: 2]
+  --evaluator VAL          [default: approxglobal]
+  --objectselector VAL     [default: rndobject]
+  --exp4gamma VAL          [default: 0.2]
+  --exp4beta VAL           [default: 3]
+  --exp4eta VAL            [default: 0.2]
+  --goalselector VAL       [default: unigoal]
+  --actionselector VAL     [default: rndaction]
+  
+"""
 
-        rewards, terminals = self.wrapper.get_r(states, goals)
-        self.update_stats['mean_r'] += np.mean(rewards)
-        qvals = self.model.compute_qvals(states, goals)
-        target_qvals = self.model.compute_target_qvals(states, goals)
-        actionProbs = softmax(qvals, axis=1, theta=10)
+if __name__ == '__main__':
 
-        i = 0
-        for nStepExpe in nStepExpes:
-            nStepExpe[0]['g'] = goals[i]
-            for exp in nStepExpe:
-                exp['q'] = qvals[i]
-                exp['tq'] = target_qvals[i]
-                exp['pi'] = actionProbs[i]
-                i += 1
-                exp['reward'] = rewards[i]
-                exp['terminal'] = terminals[i]
-            end = {'q': qvals[i], 'tq': target_qvals[i], 'pi': actionProbs[i]}
-            nStepExpe.append(end)
-            i += 1
+    args = docopt(help)
+    log_dir = build_logger(args)
+    loggerTB = Logger(dir=log_dir,
+                      format_strs=['TB'])
+    loggerStdoutJSON = Logger(dir=log_dir,
+                        format_strs=['json', 'stdout'])
 
-        return nStepExpes
+    nbObjects = int(args['--nbObjects'])
+    nbFeatures = int(args['--nbFeatures'])
+    nbDependences = int(args['--nbDependences'])
 
-    def getTargetsSumTD(self, nStepExpes):
-        targets = []
-        states = []
-        actions = []
-        goals = []
-        ros = []
-        for nStepExpe in nStepExpes:
-            tdErrors = []
-            cs = []
-            for exp0, exp1 in zip(nStepExpe[:-1], nStepExpe[1:]):
+    register(
+        id='Objects-v0',
+        entry_point='environments:Objects',
+        kwargs={'nbObjects': nbObjects,
+                'nbFeatures': nbFeatures,
+                'nbDependences': nbDependences},
+        wrapper_entry_point='env_wrappers.objects:Objects'
+    )
 
-                b = np.sum(np.multiply(exp1['pi'], exp1['tq']), keepdims=True)
-                b = exp0['reward'] + (1 - exp0['terminal']) * self._gamma * b
-                #TODO influence target clipping
-                b = np.clip(b, self.wrapper.rNotTerm / (1 - self._gamma), self.wrapper.rTerm)
-                tdErrors.append((b - exp0['q'][exp0['a0']]).squeeze())
+    env, wrapper = make(args['--env'], args)
+    # model = Controller(wrapper, nstep=1, _gamma=0.99, _lambda=0, IS='no')
+    model = Predictor(wrapper)
+    agent = Agent(args, env, wrapper, model, [loggerTB, loggerStdoutJSON])
 
-                ### Calcul des ratios variable selon la méthode
-                if self.IS == 'no':
-                    cs.append(self._gamma * self._lambda)
-                elif self.IS == 'standard':
-                    ro = exp0['pi'][exp0['a0']] / exp0['mu0']
-                    cs.append(ro * self._gamma * self._lambda)
-                elif self.IS == 'retrace':
-                    ro = exp0['pi'][exp0['a0']] / exp0['mu0']
-                    cs.append(min(1, ro) * self._gamma * self._lambda)
-                elif self.IS == 'tb':
-                    cs.append(exp0['pi'][exp0['a0']] * self._gamma * self._lambda)
-                else:
-                    raise RuntimeError
+    evaluators = {
+        'tderror': TDerror_evaluator(agent.buffer, agent.model, agent.wrapper),
+        'approxbuffer': ApproxError_buffer_evaluator(agent.buffer, agent.model),
+        'approxglobal': ApproxError_global_evaluator(env, agent.model),
+        'approxobject': ApproxError_objects_evaluator(env, agent.model)
+    }
+    evaluator = evaluators[args['--evaluator']]
 
-            cs[0] = 1
-            exp = nStepExpe[0]
-            states.append(exp['s0'])
-            actions.append(exp['a0'])
-            goals.append(exp['g'])
-            ros.append(np.mean(cs))
-            delta = np.sum(np.multiply(tdErrors, np.cumprod(cs)))
-            targets.append(exp['q'][exp['a0']] + delta)
+    object_selectors = {
+        'exp4object': EXP4(K=env.nbObjects,
+                     evaluator=evaluator,
+                     gamma=float(args['--exp4gamma']),
+                     beta=float(args['--exp4beta']),
+                     eta=float(args['--exp4eta'])),
+        'rndobject': RandomObjectSelector(env.nbObjects, evaluator)
+    }
 
-        res = [np.vstack(x) for x in [states, actions, goals, targets, ros]]
-        return res
+    goal_selectors = {
+        'buffergoal': Buffer_goal_selector(agent.buffer),
+        'unigoal': Uniform_goal_selector(env.nbFeatures)
+    }
+
+    action_selectors = {
+        'rndaction': Random_action_selector(env.nbActions)
+    }
+
+    object_selector = object_selectors[args['--objectselector']]
+    goal_selector = goal_selectors[args['--goalselector']]
+    action_selector = action_selectors[args['--actionselector']]
+
+    agent.learn2(object_selector=object_selector,
+                goal_selector=goal_selector,
+                action_selector=action_selector)

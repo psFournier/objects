@@ -4,7 +4,7 @@ from gym import Wrapper
 class Objects(Wrapper):
     def __init__(self, env, args):
         super(Objects, self).__init__(env)
-        self.gamma = float(args['--gamma'])
+        self.gamma = 0.99
         self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
         self.rTerm = 0 - float(args['--initq'])
         self.stats = {'changes': 0}
@@ -21,7 +21,7 @@ class Objects(Wrapper):
     def get_r(self, s, g):
         d = np.linalg.norm(s-g, axis=-1)
         r = (d < 0.01) * self.rTerm + (1 - (d < 0.01)) * self.rNotTerm
-        return r, np.zeros_like(r)
+        return r, np.zeros_like(r   )
 
     # def reset(self, state):
     #     exp = {}
@@ -100,7 +100,7 @@ class Objects(Wrapper):
 
     @property
     def state_dim(self):
-        return self.env.nbFeatures,
+        return self.env.nbFeatures
 
     @property
     def action_dim(self):
