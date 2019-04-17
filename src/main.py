@@ -6,7 +6,7 @@ from dqn import Controller
 from approximators import Predictor
 from logger import Logger, build_logger
 from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_evaluator, \
-    ApproxError_global_evaluator, ApproxError_objects_evaluator
+    ApproxError_global_evaluator, ApproxError_objects_evaluator, ApproxError_changes_evaluator
 from objectSelectors import EXP4, RandomObjectSelector
 from goalSelectors import Uniform_goal_selector, Buffer_goal_selector
 from actionSelectors import Random_action_selector, NN_action_selector
@@ -22,7 +22,7 @@ Usage:
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
   --initq VAL              [default: -100]
-  --layers VAL             [default: 128,128]
+  --layers VAL             [default: 32]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
@@ -34,11 +34,15 @@ Options:
   --nbDependences VAL      [default: 2]
   --evaluator VAL          [default: approxglobal]
   --objectselector VAL     [default: rndobject]
-  --exp4gamma VAL          [default: 0.2]
-  --exp4beta VAL           [default: 3]
-  --exp4eta VAL            [default: 0.2]
+  --exp4gamma VAL          [default: 0.01]
+  --exp4beta VAL           [default: 5]
+  --exp4eta VAL            [default: 0.02]
   --goalselector VAL       [default: unigoal]
   --actionselector VAL     [default: rndaction]
+  --dropout VAL            [default: 1]
+  --l2reg VAL              [default: 0]
+  --train_episodes VAL     [default: 2000]
+  --seed SEED              Random seed
   
 """
 
@@ -55,25 +59,39 @@ if __name__ == '__main__':
     nbFeatures = int(args['--nbFeatures'])
     nbDependences = int(args['--nbDependences'])
 
+    seed = args['--seed']
+    if seed is not None:
+        seed = int(seed)
+        np.random.seed(seed)
+
     register(
         id='Objects-v0',
         entry_point='environments:Objects',
-        kwargs={'nbObjects': nbObjects,
+        kwargs={'init': np.array([2, 2, 2, 0.05]),
+                'nbObjects': nbObjects,
                 'nbFeatures': nbFeatures,
                 'nbDependences': nbDependences},
         wrapper_entry_point='env_wrappers.objects:Objects'
     )
 
+    register(
+        id='ObjectsEasy-v0',
+        entry_point='environments:ObjectsEasy',
+        kwargs={},
+        wrapper_entry_point='env_wrappers.objects:Objects'
+    )
+
     env, wrapper = make(args['--env'], args)
     # model = Controller(wrapper, nstep=1, _gamma=0.99, _lambda=0, IS='no')
-    model = Predictor(wrapper)
+    model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]), dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
     agent = Agent(args, env, wrapper, model, [loggerTB, loggerStdoutJSON])
 
     evaluators = {
         'tderror': TDerror_evaluator(agent.buffer, agent.model, agent.wrapper),
         'approxbuffer': ApproxError_buffer_evaluator(agent.buffer, agent.model),
         'approxglobal': ApproxError_global_evaluator(env, agent.model),
-        'approxobject': ApproxError_objects_evaluator(env, agent.model)
+        'approxobject': ApproxError_objects_evaluator(env, agent.model),
+        'approxchange': ApproxError_changes_evaluator(env, agent.model)
     }
     evaluator = evaluators[args['--evaluator']]
 
@@ -83,7 +101,7 @@ if __name__ == '__main__':
                      gamma=float(args['--exp4gamma']),
                      beta=float(args['--exp4beta']),
                      eta=float(args['--exp4eta'])),
-        'rndobject': RandomObjectSelector(env.nbObjects, evaluator)
+        'rndobject': RandomObjectSelector(env.nbObjects, evaluator, eta=float(args['--exp4eta']))
     }
 
     goal_selectors = {

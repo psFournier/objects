@@ -1,17 +1,6 @@
 import numpy as np
 from prioritizedReplayBuffer import ReplayBuffer
-from env_wrappers.registration import make
-from docopt import docopt
-from dqn import Controller
-from approximators import Predictor
-from logger import Logger, build_logger
-from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_evaluator, \
-    ApproxError_global_evaluator, ApproxError_objects_evaluator
-from objectSelectors import EXP4, RandomObjectSelector
 from goalSelectors import Uniform_goal_selector, Buffer_goal_selector
-from actionSelectors import Random_action_selector, NN_action_selector
-from utils import softmax
-from env_wrappers.registration import register
 
 class Agent(object):
     def __init__(self, args, env, wrapper, model, loggers):
@@ -22,8 +11,13 @@ class Agent(object):
         self.loggers = loggers
         self.env_step = 0
         self.train_step = 0
-        self.train_stats = {'rho': 0, 'loss': 0, 'target_mean': 0, 'qval': 0, 'mean_reward': 0, 'tderror': 0}
-        self.env_stats = {}
+
+        self.stats = {}
+        for object in range(self.env.nbObjects):
+            self.stats['train{}'.format(object)] = {'coverage': 0, 'divide': 0, 'loss':0}
+            self.stats['play{}'.format(object)] = {}
+        self.stats['train'] = {'loss': 0, 'divide':0}
+        self.stats['play'] = {}
 
         self._gamma = 0.99
         self._lambda = float(args['--lambda'])
@@ -31,9 +25,10 @@ class Agent(object):
         self.IS = args['--IS']
         self.batch_size = 64
         self.env_steps = 50
-        self.train_steps = 100
+        self.train_steps = 10
         self.episodes = 1000
-        self.log_freq = 10
+        self.train_episodes = int(args['--train_episodes'])
+        self.log_freq = 100
 
     def play(self, object, goal_selector, action_selector):
         self.env.reset()
@@ -68,26 +63,13 @@ class Agent(object):
 
         for _ in range(self.train_steps):
             exps = self.buffer.sample(self.batch_size, object)
-            stats = self.model.train(exps)
+            loss, var = self.model.train(exps)
             self.train_step += 1
-            for key, val in stats.items():
-                self.train_stats[key] += val
-
-    def log(self, stats):
-
-        for logger in self.loggers:
-            logger.logkv('env_step', self.env_step)
-            logger.logkv('train_step', self.train_step)
-            for name, val in self.env_stats.items():
-                logger.logkv(name, val / (self.env_steps*self.log_freq))
-            for name, val in self.train_stats.items():
-                logger.logkv(name, val / (self.train_steps*self.log_freq))
-            for name, val in stats.items():
-                logger.logkv(name, val)
-            logger.dumpkvs()
-        for stats in [self.env_stats, self.train_stats]:
-            for name, val in stats.items():
-                stats[name] = 0
+            self.stats['train']['loss'] += loss
+            self.stats['train']['divide'] += 1
+            self.stats['train' + str(object)]['loss'] += loss
+            self.stats['train' + str(object)]['coverage'] += var
+            self.stats['train' + str(object)]['divide'] += 1
 
     def learn1(self, object_selector, goal_selector, action_selector):
 
@@ -105,8 +87,8 @@ class Agent(object):
 
             object_selector.update(object)
 
-            if ep % self.log_freq == 0:
-                self.log(object_selector.stats)
+            # if ep % self.log_freq == 0:
+                # self.log(object_selector.stats)
 
     def learn2(self, object_selector, goal_selector, action_selector):
 
@@ -119,17 +101,34 @@ class Agent(object):
             if ep % 100 == 0:
                 print(self.env_step)
 
-        for ep in range(self.episodes):
+        for ep in range(self.train_episodes):
 
             object_selector.evaluate()
 
             object = np.random.choice(object_selector.K, p=object_selector.probs)
+            # object = np.random.randint(2)
 
             self.train(object)
 
             object_selector.update(object)
             if ep % self.log_freq == 0:
-                self.log(object_selector.stats)
+                self.stats['objs'] = object_selector.stats
+                for logger in self.loggers:
+                    logger.logkv('trainstep', self.train_step)
+                    logger.logkv('playstep', self.env_step)
+                    for name, dic in self.stats.items():
+                        for key, val in dic.items():
+                            if 'divide' in dic.keys():
+                                if dic['divide'] != 0 and key != 'divide':
+                                    logger.logkv(name+'_'+key, val / dic['divide'])
+                            else:
+                                logger.logkv(name+'_'+key, val)
+                    logger.dumpkvs()
+                for key1, stat in self.stats.items():
+                    for key2, val in stat.items():
+                        stat[key2] = 0
+
+
 
     # def end_episode(self):
     #     l = len(self.current_trajectory)

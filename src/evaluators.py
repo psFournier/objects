@@ -38,12 +38,12 @@ class ApproxError_buffer_evaluator(object):
         self.model = model
 
     def evaluate(self):
-        transitions = self.buffer.sample(1000)
+        transitions = self.buffer.sample(5000)
         states0 = np.vstack([t['s0'] for t in transitions])
         actions = np.vstack([t['a0'] for t in transitions])
         y_preds = self.model._pred([states0, actions])[0]
         y_true = np.vstack([t['s1'] for t in transitions])
-        return np.mean(np.square(y_preds - y_true))
+        return np.mean(np.square(y_preds - (y_true - states0)))
 
 class ApproxError_objects_evaluator(object):
     def __init__(self, env, model):
@@ -72,16 +72,36 @@ class ApproxError_global_evaluator(object):
     def __init__(self, env, model):
         self.env = env
         self.model = model
+        self.states0 = np.random.uniform(-1, 1, size=(1000, self.env.nbFeatures))
+        self.actions = np.tile(np.reshape(np.arange(self.env.nbActions), (-1, 1)), (1000, 1))
+        self.states1 = np.reshape(np.array([]), (0, self.env.nbFeatures))
+        for state in self.states0:
+            state1 = np.clip(self.env.next_state(state), -1, 1)
+            self.states1 = np.vstack([self.states1, state1])
+        self.states0 = np.repeat(self.states0, self.env.nbActions, axis = 0)
 
     def evaluate(self):
-        states0 = np.random.uniform(-1, 1, size=(100, self.env.nbFeatures))
-        states1 = np.reshape(np.array([]), (0, self.env.nbFeatures))
-        for state in states0:
+        y_preds = self.model._pred([self.states0, self.actions])[0]
+        return np.mean(np.square(y_preds - (self.states1 - self.states0)))
+
+class ApproxError_changes_evaluator(object):
+    def __init__(self, env, model):
+        self.env = env
+        self.model = model
+        self.states0 = np.random.uniform(-1, 1, size=(10000, self.env.nbFeatures))
+        self.actions = np.tile(np.reshape(np.arange(self.env.nbActions), (-1, 1)), (10000, 1))
+        self.states1 = np.reshape(np.array([]), (0, self.env.nbFeatures))
+        for state in self.states0:
             state1 = np.clip(self.env.next_state(state), -1, 1)
-            states1 = np.vstack([states1, state1])
-        states0 = np.repeat(states0, self.env.nbActions, axis=0)
-        actions = np.tile(np.reshape(np.arange(self.env.nbActions), (-1, 1)), (100, 1))
-        y_preds = self.model._pred([states0, actions])[0]
-        return np.mean(np.square(y_preds - states1))
+            self.states1 = np.vstack([self.states1, state1])
+        self.states0 = np.repeat(self.states0, self.env.nbActions, axis = 0)
+        changes = np.where(np.any(self.states0 - self.states1 != 0, axis=1))
+        self.states0 = self.states0[changes]
+        self.states1 = self.states1[changes]
+        self.actions = self.actions[changes]
+
+    def evaluate(self):
+        y_preds = self.model._pred([self.states0, self.actions])[0]
+        return np.mean(np.square(y_preds - (self.states1 - self.states0)))
 
 # class Control_evaluator(object)
