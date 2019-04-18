@@ -7,7 +7,7 @@ class Agent(object):
         self.env = env
         self.wrapper = wrapper
         self.model = model
-        self.buffer = ReplayBuffer(limit=int(5e5), N=self.wrapper.env.nbObjects)
+        self.buffer = ReplayBuffer(limit=int(1e4), N=self.wrapper.env.nbObjects)
         self.loggers = loggers
         self.env_step = 0
         self.train_step = 0
@@ -25,10 +25,26 @@ class Agent(object):
         self.IS = args['--IS']
         self.batch_size = 64
         self.env_steps = 50
-        self.train_steps = 10
+        self.train_steps = 1
         self.episodes = 1000
         self.train_episodes = int(args['--train_episodes'])
-        self.log_freq = 100
+        self.log_freq = 1
+
+    def log(self):
+        for logger in self.loggers:
+            logger.logkv('trainstep', self.train_step)
+            logger.logkv('playstep', self.env_step)
+            for name, dic in self.stats.items():
+                for key, val in dic.items():
+                    if 'divide' in dic.keys():
+                        if dic['divide'] != 0 and key != 'divide':
+                            logger.logkv(name + '_' + key, val / dic['divide'])
+                    else:
+                        logger.logkv(name + '_' + key, val)
+            logger.dumpkvs()
+        for key1, stat in self.stats.items():
+            for key2, val in stat.items():
+                stat[key2] = 0
 
     def play(self, object, goal_selector, action_selector):
         self.env.reset()
@@ -60,75 +76,78 @@ class Agent(object):
                       action_selector=action_selector)
 
     def train(self, object):
+        if self.buffer._buffers[object]._numsamples > self.train_steps * self.batch_size:
+            for _ in range(self.train_steps):
+                exps = self.buffer.sample(self.batch_size, object)
+                dico = self.model.train(exps)
+                self.train_step += 1
+                self.stats['train']['loss'] += dico['loss']
+                self.stats['train']['divide'] += 1
+                self.stats['train' + str(object)]['loss'] += dico['loss']
+                # self.stats['train' + str(object)]['coverage'] += var
+                self.stats['train' + str(object)]['divide'] += 1
 
-        for _ in range(self.train_steps):
-            exps = self.buffer.sample(self.batch_size, object)
-            loss, var = self.model.train(exps)
-            self.train_step += 1
-            self.stats['train']['loss'] += loss
-            self.stats['train']['divide'] += 1
-            self.stats['train' + str(object)]['loss'] += loss
-            self.stats['train' + str(object)]['coverage'] += var
-            self.stats['train' + str(object)]['divide'] += 1
+    # def learn1(self, object_selector, goal_selector, action_selector):
+    #
+    #     for ep in range(self.episodes):
+    #
+    #         object_selector.evaluate()
+    #
+    #         object = np.random.choice(object_selector.K, p=object_selector.probs)
+    #         object_selector.attempts[object] += 1
+    #
+    #         self.play(object, goal_selector, action_selector)
+    #
+    #         self.train(object)
+    #
+    #         object_selector.update(object)
+    #
+    #         if ep % self.log_freq == 0:
+    #             self.stats['objs'] = object_selector.stats
+    #             self.log()
+    #
+    # def learn2(self, object_selector, goal_selector, action_selector):
+    #
+    #     for ep in range(self.episodes):
+    #
+    #         object = np.random.randint(self.env.nbObjects)
+    #
+    #         self.play(object, goal_selector, action_selector)
+    #
+    #     for ep in range(self.train_episodes):
+    #
+    #         object_selector.evaluate()
+    #
+    #         object = np.random.choice(object_selector.K, p=object_selector.probs)
+    #         # object = np.random.randint(2)
+    #
+    #         self.train(object)
+    #
+    #         object_selector.update(object)
+    #         if ep % self.log_freq == 0:
+    #             self.stats['objs'] = object_selector.stats
+    #             self.log()
 
-    def learn1(self, object_selector, goal_selector, action_selector):
-
-        self.bootstrap(action_selector)
+    def learn3(self, object_selector, goal_selector, action_selector, evaluator):
 
         for ep in range(self.episodes):
 
-            object_selector.evaluate()
-
-            object = np.random.choice(object_selector.K, p=object_selector.probs)
+            object_selector.update_probs()
+            p = object_selector.get_probs()
+            object = np.random.choice(object_selector.K, p=p)
+            object_selector.attempts[object] += 1
 
             self.play(object, goal_selector, action_selector)
 
             self.train(object)
 
-            object_selector.update(object)
+            reward = evaluator.get_reward()
 
-            # if ep % self.log_freq == 0:
-                # self.log(object_selector.stats)
+            object_selector.update_weights(object, reward)
 
-    def learn2(self, object_selector, goal_selector, action_selector):
-
-        for ep in range(self.episodes):
-
-            object = np.random.randint(self.env.nbObjects)
-
-            self.play(object, goal_selector, action_selector)
-
-            if ep % 100 == 0:
-                print(self.env_step)
-
-        for ep in range(self.train_episodes):
-
-            object_selector.evaluate()
-
-            object = np.random.choice(object_selector.K, p=object_selector.probs)
-            # object = np.random.randint(2)
-
-            self.train(object)
-
-            object_selector.update(object)
             if ep % self.log_freq == 0:
                 self.stats['objs'] = object_selector.stats
-                for logger in self.loggers:
-                    logger.logkv('trainstep', self.train_step)
-                    logger.logkv('playstep', self.env_step)
-                    for name, dic in self.stats.items():
-                        for key, val in dic.items():
-                            if 'divide' in dic.keys():
-                                if dic['divide'] != 0 and key != 'divide':
-                                    logger.logkv(name+'_'+key, val / dic['divide'])
-                            else:
-                                logger.logkv(name+'_'+key, val)
-                    logger.dumpkvs()
-                for key1, stat in self.stats.items():
-                    for key2, val in stat.items():
-                        stat[key2] = 0
-
-
+                self.log()
 
     # def end_episode(self):
     #     l = len(self.current_trajectory)

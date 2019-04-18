@@ -1,5 +1,5 @@
 from keras.models import Model
-from keras.initializers import RandomUniform, lecun_uniform
+from keras.initializers import TruncatedNormal
 from keras.regularizers import l2
 from keras.layers import Dense, Input, Lambda, Reshape, Dropout
 from keras.optimizers import Adam
@@ -25,15 +25,15 @@ class Predictor(object):
         for l in layers:
             h = Dense(l,
                       activation="relu",
-                      kernel_initializer=lecun_uniform(),
-                      bias_initializer=lecun_uniform(),
+                      kernel_initializer=TruncatedNormal(),
+                      bias_initializer=TruncatedNormal(),
                       kernel_regularizer=l2(l2reg),
                       )(h)
             h = Dropout(rate=dropout)(h)
         y_pred = Dense(S_dim,
                        activation='tanh',
-                       kernel_initializer=lecun_uniform(),
-                       bias_initializer=lecun_uniform(),
+                       kernel_initializer=TruncatedNormal(),
+                       bias_initializer=TruncatedNormal(),
                        kernel_regularizer=l2(l2reg),
                        )(h)
         return y_pred

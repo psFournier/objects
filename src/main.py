@@ -7,12 +7,15 @@ from approximators import Predictor
 from logger import Logger, build_logger
 from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_evaluator, \
     ApproxError_global_evaluator, ApproxError_objects_evaluator, ApproxError_changes_evaluator
-from objectSelectors import EXP4, RandomObjectSelector
+# from objectSelectors import EXP4, RandomObjectSelector, EXP4SSP
 from goalSelectors import Uniform_goal_selector, Buffer_goal_selector
 from actionSelectors import Random_action_selector, NN_action_selector
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
+from exp4 import EXP4
+from experts import Reached_states_variance_maximizer_expert, Uniform_expert
+from evaluators import State_variance_evaluator
 
 help = """
 
@@ -29,19 +32,20 @@ Options:
   --IS VAL                 [default: no]
   --targetClip VAL         [default: 0]
   --lambda VAL             [default: 0]
-  --nbObjects VAL          [default: 4]
+  --nbObjects VAL          [default: 2]
   --nbFeatures VAL         [default: 3]
-  --nbDependences VAL      [default: 2]
+  --nbActions VAL          [default: 5]
+  --density VAL            [default: 0.5]
   --evaluator VAL          [default: approxglobal]
-  --objectselector VAL     [default: rndobject]
-  --exp4gamma VAL          [default: 0.01]
+  --objects VAL     [default: rndobject]
+  --exp4gamma VAL          [default: 0.1]
   --exp4beta VAL           [default: 5]
-  --exp4eta VAL            [default: 0.02]
-  --goalselector VAL       [default: unigoal]
-  --actionselector VAL     [default: rndaction]
+  --exp4eta VAL            [default: 0.1]
+  --goals VAL       [default: unigoal]
+  --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --train_episodes VAL     [default: 2000]
+  --train_episodes VAL     [default: 1000]
   --seed SEED              Random seed
   
 """
@@ -53,70 +57,81 @@ if __name__ == '__main__':
     loggerTB = Logger(dir=log_dir,
                       format_strs=['TB'])
     loggerStdoutJSON = Logger(dir=log_dir,
-                        format_strs=['json', 'stdout'])
-
-    nbObjects = int(args['--nbObjects'])
-    nbFeatures = int(args['--nbFeatures'])
-    nbDependences = int(args['--nbDependences'])
-
-    seed = args['--seed']
-    if seed is not None:
-        seed = int(seed)
-        np.random.seed(seed)
+                              format_strs=['json', 'stdout'])
 
     register(
         id='Objects-v0',
         entry_point='environments:Objects',
-        kwargs={'init': np.array([2, 2, 2, 0.05]),
-                'nbObjects': nbObjects,
-                'nbFeatures': nbFeatures,
-                'nbDependences': nbDependences},
-        wrapper_entry_point='env_wrappers.objects:Objects'
-    )
-
-    register(
-        id='ObjectsEasy-v0',
-        entry_point='environments:ObjectsEasy',
-        kwargs={},
+        kwargs={'seed': int(args['--seed']),
+                'nbObjects': int(args['--nbObjects']),
+                'nbFeatures': int(args['--nbFeatures']),
+                'nbActions': int(args['--nbActions']),
+                'density': float(args['--density'])},
         wrapper_entry_point='env_wrappers.objects:Objects'
     )
 
     env, wrapper = make(args['--env'], args)
-    # model = Controller(wrapper, nstep=1, _gamma=0.99, _lambda=0, IS='no')
-    model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]), dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
+    model = Controller(wrapper,
+                       nstep=1,
+                       _gamma=0.99,
+                       _lambda=0,
+                       IS='no',
+                       layers=np.array([int(l) for l in args['--layers'].split(',')]),
+                       dropout=float(args['--dropout']),
+                       l2reg=float(args['--l2reg']))
+    # model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]),
+    #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
     agent = Agent(args, env, wrapper, model, [loggerTB, loggerStdoutJSON])
-
-    evaluators = {
-        'tderror': TDerror_evaluator(agent.buffer, agent.model, agent.wrapper),
-        'approxbuffer': ApproxError_buffer_evaluator(agent.buffer, agent.model),
-        'approxglobal': ApproxError_global_evaluator(env, agent.model),
-        'approxobject': ApproxError_objects_evaluator(env, agent.model),
-        'approxchange': ApproxError_changes_evaluator(env, agent.model)
-    }
-    evaluator = evaluators[args['--evaluator']]
-
-    object_selectors = {
-        'exp4object': EXP4(K=env.nbObjects,
-                     evaluator=evaluator,
-                     gamma=float(args['--exp4gamma']),
-                     beta=float(args['--exp4beta']),
-                     eta=float(args['--exp4eta'])),
-        'rndobject': RandomObjectSelector(env.nbObjects, evaluator, eta=float(args['--exp4eta']))
-    }
-
+    # evaluators = {
+    #     'tderror': TDerror_evaluator(agent.buffer, agent.model, agent.wrapper),
+    #     'approxbuffer': ApproxError_buffer_evaluator(agent.buffer, agent.model),
+    #     'approxglobal': ApproxError_global_evaluator(env, agent.model),
+    #     'approxobject': ApproxError_objects_evaluator(env, agent.model),
+    #     'approxchange': ApproxError_changes_evaluator(env, agent.model)
+    # }
+    # evaluators = {
+    #     'tderror': TDerror_evaluator,
+    #     'approxbuffer': ApproxError_buffer_evaluator,
+    #     'approxglobal': ApproxError_global_evaluator,
+    #     'approxobject': ApproxError_objects_evaluator,
+    #     'approxchange': ApproxError_changes_evaluator
+    # }
+    # evaluator = evaluators[args['--evaluator']](env, agent.model)
+    #
+    # object_selectors = {
+    #     'exp4object': EXP4(K=env.nbObjects,
+    #                        evaluator=evaluator,
+    #                        gamma=float(args['--exp4gamma']),
+    #                        beta=float(args['--exp4beta']),
+    #                        eta=float(args['--exp4eta'])),
+    #     'rndobject': RandomObjectSelector(env.nbObjects, evaluator, eta=float(args['--exp4eta'])),
+    #     'exp4ssp': EXP4SSP(K=env.nbObjects,
+    #                        evaluator=evaluator,
+    #                        gamma=float(args['--exp4gamma']),
+    #                        beta=float(args['--exp4beta']),
+    #                        eta=float(args['--exp4eta']))
+    # }
+    # object_selector = object_selectors[args['--objectselector']]
+    experts = [
+        Reached_states_variance_maximizer_expert(agent),
+        Uniform_expert(agent)
+    ]
+    object_selector = EXP4(experts=experts,
+                           K=env.nbObjects,
+                           gamma=float(args['--exp4gamma']),
+                           beta=float(args['--exp4beta']))
     goal_selectors = {
-        'buffergoal': Buffer_goal_selector(agent.buffer),
-        'unigoal': Uniform_goal_selector(env.nbFeatures)
+        'buffer': Buffer_goal_selector,
+        'uniform': Uniform_goal_selector
     }
-
     action_selectors = {
-        'rndaction': Random_action_selector(env.nbActions)
+        'rnd': Random_action_selector,
+        'nn': NN_action_selector,
     }
-
-    object_selector = object_selectors[args['--objectselector']]
-    goal_selector = goal_selectors[args['--goalselector']]
-    action_selector = action_selectors[args['--actionselector']]
-
-    agent.learn2(object_selector=object_selector,
-                goal_selector=goal_selector,
-                action_selector=action_selector)
+    evaluator = State_variance_evaluator(agent)
+    goal_selector = goal_selectors[args['--goals']](agent)
+    action_selector = action_selectors[args['--actions']](agent)
+    agent.learn3(object_selector=object_selector,
+                 goal_selector=goal_selector,
+                 action_selector=action_selector,
+                 evaluator=evaluator)

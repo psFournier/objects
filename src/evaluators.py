@@ -1,6 +1,27 @@
 import numpy as np
 
+class State_variance_evaluator(object):
+    def __init__(self, agent):
+        self.last_eval = 0
+        self.buffer = agent.buffer
 
+    def evaluate(self):
+        reached_states_all = []
+        for buffer in self.buffer._buffers:
+            if buffer._numsamples != 0:
+                reached_states_all.append(
+                    np.vstack([self.buffer._storage[idx]['s1'] for idx in buffer._storage])
+                )
+            else:
+                reached_states_all.append(0)
+        vars = [np.var(reached_states) for reached_states in reached_states_all]
+        return np.sum(vars)
+
+    def get_reward(self):
+        eval = self.evaluate()
+        reward = eval - self.last_eval
+        self.last_eval = eval
+        return reward
 
 class Qval_evaluator(object):
     def __init__(self, buffer, model):
@@ -92,8 +113,9 @@ class ApproxError_changes_evaluator(object):
         self.actions = np.tile(np.reshape(np.arange(self.env.nbActions), (-1, 1)), (10000, 1))
         self.states1 = np.reshape(np.array([]), (0, self.env.nbFeatures))
         for state in self.states0:
-            state1 = np.clip(self.env.next_state(state), -1, 1)
-            self.states1 = np.vstack([self.states1, state1])
+            for action in range(self.env.nbActions):
+                state1 = np.clip(self.env.next_state(state, action), -1, 1)
+                self.states1 = np.vstack([self.states1, state1])
         self.states0 = np.repeat(self.states0, self.env.nbActions, axis = 0)
         changes = np.where(np.any(self.states0 - self.states1 != 0, axis=1))
         self.states0 = self.states0[changes]
@@ -103,5 +125,6 @@ class ApproxError_changes_evaluator(object):
     def evaluate(self):
         y_preds = self.model._pred([self.states0, self.actions])[0]
         return np.mean(np.square(y_preds - (self.states1 - self.states0)))
+
 
 # class Control_evaluator(object)

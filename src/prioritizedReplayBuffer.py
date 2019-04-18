@@ -144,7 +144,7 @@ class ReplayBuffer(object):
     def __init__(self, limit, N):
         self._storage = []
         self._next_idx = 0
-        self._limit = limit
+        self._limit = N*limit
         self._buffers = [RingBuffer(limit) for _ in range(N)]
 
     def __len__(self):
