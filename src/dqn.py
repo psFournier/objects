@@ -17,7 +17,7 @@ class Controller(object):
         self.layers = layers
         self.wrapper = wrapper
 
-        S, G = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.state_dim,))
+        S, G = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.goal_dim,))
         A = Input(shape=(1,), dtype='uint8')
         targets = Input(shape=(1,))
         qvals = self.create_network(S, G, wrapper.action_dim, dropout, l2reg)
@@ -33,7 +33,7 @@ class Controller(object):
         self._qval = K.function(inputs=[S, G, A], outputs=[qval], updates=None)
         self._train = K.function([S, G, A, targets], [loss, qval, td_errors], updates)
 
-        S_target, G_target = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.state_dim,))
+        S_target, G_target = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.goal_dim,))
         targetQvals = self.create_network(S_target, G_target, wrapper.action_dim, dropout, l2reg)
 
         self.targetmodel = Model([S_target, G_target], targetQvals)

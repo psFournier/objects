@@ -7,6 +7,13 @@ class Uniform_goal_selector(object):
     def select(self, object):
         return np.random.uniform(-1, 1, self.nbFeatures)
 
+class No_goal_selector(object):
+    def __init__(self, agent):
+        self.nbFeatures = agent.env.nbFeatures
+
+    def select(self, object):
+        return np.array([])
+
 class Buffer_goal_selector(object):
     def __init__(self, agent):
         self.buffer = agent.buffer

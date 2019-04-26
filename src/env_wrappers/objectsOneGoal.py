@@ -1,9 +1,9 @@
 import numpy as np
 from gym import Wrapper
 
-class Objects(Wrapper):
+class ObjectsOneGoal(Wrapper):
     def __init__(self, env, args):
-        super(Objects, self).__init__(env)
+        super(ObjectsOneGoal, self).__init__(env)
         self.gamma = 0.99
         self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
         self.rTerm = 0 - float(args['--initq'])
@@ -19,7 +19,7 @@ class Objects(Wrapper):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        d = np.linalg.norm(s-g, axis=-1)
+        d = np.abs(s[...,0])
         r = (d < 0.01) * self.rTerm + (1 - (d < 0.01)) * self.rNotTerm
         return r, np.zeros_like(r)
 
@@ -104,7 +104,7 @@ class Objects(Wrapper):
 
     @property
     def goal_dim(self):
-        return self.env.nbFeatures
+        return 0
 
     @property
     def action_dim(self):

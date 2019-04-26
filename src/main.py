@@ -8,14 +8,14 @@ from logger import Logger, build_logger
 from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_evaluator, \
     ApproxError_global_evaluator, ApproxError_objects_evaluator, ApproxError_changes_evaluator
 # from objectSelectors import EXP4, RandomObjectSelector, EXP4SSP
-from goalSelectors import Uniform_goal_selector, Buffer_goal_selector
-from actionSelectors import Random_action_selector, NN_action_selector
+from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_selector
+from actionSelectors import Random_action_selector, State_goal_action_selector, State_action_selector
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
 from exp4 import EXP4
 from experts import Reached_states_variance_maximizer_expert, Uniform_expert
-from evaluators import State_variance_evaluator
+from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator
 
 help = """
 
@@ -32,10 +32,10 @@ Options:
   --IS VAL                 [default: no]
   --targetClip VAL         [default: 0]
   --lambda VAL             [default: 0]
-  --nbObjects VAL          [default: 2]
+  --nbObjects VAL          [default: 1]
   --nbFeatures VAL         [default: 3]
-  --nbActions VAL          [default: 5]
-  --density VAL            [default: 0.5]
+  --nbActions VAL          [default: 10]
+  --density VAL            [default: 0.1]
   --evaluator VAL          [default: approxglobal]
   --objects VAL     [default: rndobject]
   --exp4gamma VAL          [default: 0.1]
@@ -45,8 +45,10 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --train_episodes VAL     [default: 1000]
+  --episodes VAL     [default: 1000]
+  --rndepisodes VAL     [default: 20]
   --seed SEED              Random seed
+  --experts VAL            [default: uni]
   
 """
 
@@ -67,7 +69,7 @@ if __name__ == '__main__':
                 'nbFeatures': int(args['--nbFeatures']),
                 'nbActions': int(args['--nbActions']),
                 'density': float(args['--density'])},
-        wrapper_entry_point='env_wrappers.objects:Objects'
+        wrapper_entry_point='env_wrappers.objectsOneGoal:ObjectsOneGoal'
     )
 
     env, wrapper = make(args['--env'], args)
@@ -112,23 +114,27 @@ if __name__ == '__main__':
     #                        eta=float(args['--exp4eta']))
     # }
     # object_selector = object_selectors[args['--objectselector']]
-    experts = [
-        Reached_states_variance_maximizer_expert(agent),
-        Uniform_expert(agent)
-    ]
+    experts_dict = {
+        'uni': Uniform_expert,
+        'rsv': Reached_states_variance_maximizer_expert
+    }
+    experts_names = [name for name in args['--experts'].split(',')]
+    experts = [experts_dict[name](agent) for name in experts_names]
     object_selector = EXP4(experts=experts,
                            K=env.nbObjects,
                            gamma=float(args['--exp4gamma']),
                            beta=float(args['--exp4beta']))
     goal_selectors = {
         'buffer': Buffer_goal_selector,
-        'uniform': Uniform_goal_selector
+        'uniform': Uniform_goal_selector,
+        'no': No_goal_selector
     }
     action_selectors = {
         'rnd': Random_action_selector,
-        'nn': NN_action_selector,
+        'sg': State_goal_action_selector,
+        's': State_action_selector
     }
-    evaluator = State_variance_evaluator(agent)
+    evaluator = Qval_evaluator(agent)
     goal_selector = goal_selectors[args['--goals']](agent)
     action_selector = action_selectors[args['--actions']](agent)
     agent.learn3(object_selector=object_selector,

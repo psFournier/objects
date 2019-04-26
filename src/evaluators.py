@@ -1,6 +1,6 @@
 import numpy as np
 
-class State_variance_evaluator(object):
+class Reached_states_variance_evaluator(object):
     def __init__(self, agent):
         self.last_eval = 0
         self.buffer = agent.buffer
@@ -23,17 +23,50 @@ class State_variance_evaluator(object):
         self.last_eval = eval
         return reward
 
-class Qval_evaluator(object):
-    def __init__(self, buffer, model):
-        self.buffer = buffer
-        self.model = model
+    @property
+    def stats(self):
+        return {'eval': self.last_eval}
 
-    def evaluate(self):
-        transitions = self.buffer.sample(200)
-        states0 = np.vstack([t['s0'] for t in transitions])
-        goals = np.vstack([t['g'] for t in transitions])
-        qvals = self.model.compute_qvals(states0, goals)
-        return np.mean(qvals)
+class Reached_goals_variance_evaluator(object):
+    def __init__(self, agent):
+        self.last_eval = 0
+        self.agent = agent
+        self.reached_goals = [np.reshape(np.array([]), (0, agent.env.nbFeatures))
+                              for _ in range(agent.env.nbObjects)]
+
+    def get_reward(self, transitions):
+        for t in transitions:
+            r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
+            if r == self.agent.wrapper.rTerm:
+                self.reached_goals[t['object']] = np.vstack([self.reached_goals[t['object']], t['g']])
+        vars = [np.var(reached_goals) if reached_goals.size!=0 else 0 for reached_goals in self.reached_goals]
+        eval = np.sum(vars)
+        reward = eval - self.last_eval
+        self.last_eval = eval
+        return reward
+
+    @property
+    def stats(self):
+        return {'eval': self.last_eval}
+
+class Qval_evaluator(object):
+    def __init__(self, agent):
+        self.agent = agent
+        self.last_eval = 0
+
+    def get_reward(self, transitions):
+        tr = self.agent.buffer.sample(200)
+        states0 = np.vstack([t['s0'] for t in tr])
+        goals = np.vstack([t['g'] for t in tr])
+        qvals = self.agent.model._qvals([states0, goals])[0]
+        eval = np.mean(qvals)
+        reward = eval - self.last_eval
+        self.last_eval = eval
+        return reward
+
+    @property
+    def stats(self):
+        return {'eval': self.last_eval}
 
 class TDerror_evaluator(object):
     def __init__(self, buffer, model, wrapper):

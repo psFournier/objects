@@ -19,6 +19,7 @@ class Objects(Env):
         self.nbFeatures = nbFeatures
         self.nbObjects = nbObjects
         self.nbActions = nbActions
+        self.lastaction = None
         #
         # self.As = [np.array([[-0.1, 0, 0.05],
         #                      [0, 0.1, 0],
