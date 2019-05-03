@@ -18,7 +18,7 @@ class ObjectsOneGoal(Wrapper):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        diff = np.reshape(s[...,-1] - 1, (-1, 1))
+        diff = s[..., 2:] - self.env.last_state
         d = np.linalg.norm(diff, axis=-1)
         r = (d < 0.1) * self.rTerm + (1 - (d < 0.1)) * self.rNotTerm
         return r, np.zeros_like(r)

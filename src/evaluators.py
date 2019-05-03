@@ -11,7 +11,7 @@ class Test_episode_evaluator(object):
         for object in range(self.agent.env.nbObjects - 2, self.agent.env.nbObjects):
             self.agent.env.reset()
             test_ep = self.agent.play(object, self.agent.goal_selector, self.agent.action_selector)
-            for t in test_ep:
+            for t in test_ep[object]:
                 r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
                 eval += r[0]
         reward = eval / 2 - self.last_eval

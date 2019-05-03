@@ -15,7 +15,7 @@ class Obj():
 class ObjectsId(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, seed=None, nbFeatures=4, nbObjects=5, density=0.5, nbActions=5, amplitude=0.5):
+    def __init__(self, seed=None, nbFeatures=4, nbObjects=10, density=0.5, nbActions=5, amplitude=0.5):
         self.nbFeatures = nbFeatures
         self.nbObjects = nbObjects
         self.nbActions = nbActions
@@ -26,7 +26,15 @@ class ObjectsId(Env):
         self.centers = np.vstack([rng.uniform(-1, 1, size=self.nbFeatures)
                                   for _ in range(self.nbActions - 1)])
         self.objects = []
-        init_states = [rng.uniform(-1, 1, size=self.nbFeatures) for _ in range(self.nbObjects)]
+        state = np.array([0.1,-0.1])
+        states = [state.copy()]
+        for _ in range(100):
+            state = np.clip(self.FFNs[np.random.randint(self.nbActions - 1)].forward(state), -1, 1).squeeze()
+            if (state != states[-1]).any():
+                states.append(state.copy())
+        idxs = np.sort(np.random.choice(len(states), self.nbObjects + 1))
+        init_states = [np.hstack([np.random.uniform(-1, 1, 2), states[idx]]) for idx in idxs[:-1]]
+        self.last_state = [states[idxs[-1]]]
         for init_state in init_states:
             self.objects.append(Obj(self, init_state=init_state))
 

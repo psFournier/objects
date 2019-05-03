@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     colors = np.array(['#377eb8', '#ff7f00'])
     # np.random.seed(1000)
-    env = ObjectsId(seed=11)
+    env = ObjectsId(seed=26)
     fig = plt.figure()
     ax1 = fig.add_subplot(211, projection='3d')
     ax2 = fig.add_subplot(212, projection='3d')
@@ -35,7 +35,7 @@ if __name__ == '__main__':
         obj = ep
         states = np.array([], dtype=np.int64).reshape(0, env.nbFeatures)
         inits = np.array([], dtype=np.int64).reshape(0, env.nbFeatures)
-        for _ in range(5):
+        for _ in range(2):
             env.reset()
             # states = np.vstack([states, np.expand_dims(env.objects[obj].state, axis=0)])
             state = env.objects[obj].state
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             cs.append('green')
             sizes.append(15)
             # print('______________')
-            for step in range(50):
+            for step in range(200):
                 act = np.random.choice(env.nbActions - 1)
                 # nb = 0
                 # while np.linalg.norm(state - env.centers[act]) > 1 and nb < 10:
