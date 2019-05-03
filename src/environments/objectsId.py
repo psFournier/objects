@@ -12,16 +12,16 @@ class Obj():
         self.init_state = init_state
         self.state = np.zeros_like(init_state)
 
-class Objects(Env):
+class ObjectsId(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, seed=None, nbFeatures=3, nbObjects=2, density=0.1, nbActions=5, amplitude=0.5):
+    def __init__(self, seed=None, nbFeatures=4, nbObjects=5, density=0.5, nbActions=5, amplitude=0.5):
         self.nbFeatures = nbFeatures
         self.nbObjects = nbObjects
         self.nbActions = nbActions
         self.lastaction = None
         rng = np.random.RandomState(seed)
-        self.FFNs = [FeedForwardNetwork(self.nbFeatures, [8], self.nbFeatures, rng, density, amplitude)
+        self.FFNs = [FeedForwardNetwork(self.nbFeatures - 2, [8], self.nbFeatures - 2, rng, density, amplitude)
                      for _ in range(self.nbActions - 1)]
         self.centers = np.vstack([rng.uniform(-1, 1, size=self.nbFeatures)
                                   for _ in range(self.nbActions - 1)])
@@ -47,8 +47,8 @@ class Objects(Env):
 
     def next_state(self, state, a):
         if a < self.nbActions - 1 and np.linalg.norm(state - self.centers[a]) < 10:
-            output = self.FFNs[a].forward(state)
-            state += output.squeeze()
+            output = self.FFNs[a].forward(state[2:])
+            state[2:] += output.squeeze()
         return state
 
     def reset(self):

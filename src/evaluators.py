@@ -1,5 +1,28 @@
 import numpy as np
 
+class Test_episode_evaluator(object):
+    def __init__(self, agent):
+        self.agent = agent
+        self.last_eval = 0
+        self.name = 'test_reward'
+
+    def get_reward(self):
+        eval = 0
+        for object in range(self.agent.env.nbObjects - 2, self.agent.env.nbObjects):
+            self.agent.env.reset()
+            test_ep = self.agent.play(object, self.agent.goal_selector, self.agent.action_selector)
+            for t in test_ep:
+                r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
+                eval += r[0]
+        reward = eval / 2 - self.last_eval
+        self.last_eval = eval / 2
+        return reward
+
+    @property
+    def stats(self):
+        return {'eval': self.last_eval}
+
+
 class Reached_states_variance_evaluator(object):
     def __init__(self, agent):
         self.last_eval = 0
@@ -41,6 +64,25 @@ class Reached_goals_variance_evaluator(object):
                 self.reached_goals[t['object']] = np.vstack([self.reached_goals[t['object']], t['g']])
         vars = [np.var(reached_goals) if reached_goals.size!=0 else 0 for reached_goals in self.reached_goals]
         eval = np.sum(vars)
+        reward = eval - self.last_eval
+        self.last_eval = eval
+        return reward
+
+    @property
+    def stats(self):
+        return {'eval': self.last_eval}
+
+class Reward_evaluator(object):
+    def __init__(self, agent):
+        self.last_eval = 0
+        self.agent = agent
+        self.name = 'train_reward'
+
+    def get_reward(self):
+        eval = 0
+        for t in self.agent.last_ep:
+            r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
+            eval += r[0]
         reward = eval - self.last_eval
         self.last_eval = eval
         return reward

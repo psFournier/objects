@@ -8,24 +8,29 @@ class Agent(object):
         self.env = env
         self.wrapper = wrapper
         self.model = model
-        self.buffer = ReplayBuffer(limit=int(1e4), N=self.env.nbObjects)
+        self.buffer = ReplayBuffer(limit=int(1e5), N=self.env.nbObjects)
+        self.goal_selector = None
+        self.action_selector = None
+        self.object_selector = None
         self.loggers = loggers
         self.env_step = 0
         self.train_step = 0
+        self.last_ep = []
+        self.last_eval = None
 
         self.stats = {}
         for object in range(self.env.nbObjects):
-            self.stats['train{}'.format(object)] = {'divide': 0, 'loss':0, 'qval': 0, 'tderror':0}
-            self.stats['play{}'.format(object)] = {}
-        self.stats['train'] = {'loss': 0, 'divide':0, 'qval': 0, 'tderror':0}
+            self.stats['train{}'.format(object)] = {'divide': 0, 'loss':0, 'qval': 0, 'tderror':0, 'rho':0, 'target_mean':0, 'mean_reward':0}
+            self.stats['play{}'.format(object)] = {'reward':0, 'divide':0}
+        self.stats['train'] = {'loss': 0, 'divide':0, 'qval': 0, 'tderror':0, 'rho':0, 'target_mean':0, 'mean_reward':0}
         self.stats['play'] = {}
 
         self.batch_size = 64
-        self.env_steps = 50
-        self.train_steps = 10
+        self.env_steps = 200
+        self.train_steps = 1000
         self.random_play_episodes = int(args['--rndepisodes'])
         self.episodes = int(args['--episodes'])
-        self.log_freq = 100
+        self.log_freq = 1
 
     def log(self):
         for logger in self.loggers:
@@ -43,50 +48,48 @@ class Agent(object):
             for key2, val in stat.items():
                 stat[key2] = 0
 
-    def play1(self, object, goal_selector, action_selector):
+    def play(self, object, goal_selector, action_selector):
         goal = goal_selector.select(object)
+        transitions = [[] for o in range(self.env.nbObjects)]
         for _ in range(self.env_steps):
-            state0 = self.wrapper.get_state(object)
+            fullstate0 = self.env.state
+            states0 = [self.wrapper.get_state(o, fullstate0) for o in range(self.env.nbObjects)]
+            state0 = states0[object]
             action, probs = action_selector.select(state0, goal)
             mu0 = probs[action]
-            self.wrapper.step((object, action))
-            state1 = self.wrapper.get_state(object)
-            transition = {'s0': state0,
-                          'a0': action,
-                          's1': state1,
-                          'g': goal,
-                          'mu0': mu0,
-                          'object': object,
-                          'next': None}
-            self.buffer.append(transition)
-            self.env_step += 1
-
-    def play2(self, object, goal_selector, action_selector):
-        goal = None
-        reached = 0
-        transitions = []
-        for _ in range(self.env_steps):
-            if goal is None or reached:
-                goal = goal_selector.select(object)
-            state0 = self.wrapper.get_state(object)
-            action, probs = action_selector.select(state0, goal)
-            mu0 = probs[action]
-            self.wrapper.step((object, action))
-            state1 = self.wrapper.get_state(object)
-            r, t = self.wrapper.get_r(state1, goal)
-            if r == self.wrapper.rTerm:
-                reached = 1
-            transition = {'s0': state0,
-                          'a0': action,
-                          's1': state1,
-                          'g': goal,
-                          'mu0': mu0,
-                          'object': object,
-                          'next': None}
-            self.buffer.append(transition)
-            transitions.append(transition)
+            self.env.step(action)
+            fullstate1 = self.env.state
+            states1 = [self.wrapper.get_state(o, fullstate1) for o in range(self.env.nbObjects)]
+            for o in range(self.env.nbObjects):
+                transition = {'s0': states0[o],
+                              'a0': action,
+                              's1': states1[o],
+                              'g': goal,
+                              'mu0': mu0,
+                              'object': o,
+                              'next': None}
+                transitions[o].append(transition)
             self.env_step += 1
         return transitions
+
+    def memorize1(self, object, transitions):
+        reward = 0
+        for tr in transitions[object]:
+            r, t = self.wrapper.get_r(tr['s1'], tr['g'])
+            reward += r[0]
+            self.buffer.append(tr)
+        self.stats['play{}'.format(object)]['reward'] += reward
+        self.stats['play{}'.format(object)]['divide'] += 1
+
+    def memorize2(self, object, transitions):
+        rewards = [0 for _ in self.env.objects]
+        for o in range(self.env.nbObjects):
+            for tr in transitions[o]:
+                r, t = self.wrapper.get_r(tr['s1'], tr['g'])
+                rewards[o] += r[0]
+                self.buffer.append(tr)
+        self.stats['play{}'.format(object)]['reward'] += rewards[object]
+        self.stats['play{}'.format(object)]['divide'] += 1
 
     # def bootstrap(self, action_selector):
     #
@@ -100,7 +103,7 @@ class Agent(object):
 
     def train(self, object):
 
-        if self.buffer._buffers[object]._numsamples > self.train_steps * self.batch_size:
+        if self.buffer._buffers[object]._numsamples > 10*self.batch_size:
             for _ in range(self.train_steps):
                 exps = self.buffer.sample(self.batch_size, object)
                 dico = self.model.train(exps)
@@ -152,32 +155,34 @@ class Agent(object):
     #             self.stats['objs'] = object_selector.stats
     #             self.log()
 
-    def learn3(self, object_selector, goal_selector, action_selector, evaluator):
+    def learn3(self, evaluators):
 
         random_goals = No_goal_selector(self)
         random_actions = Random_action_selector(self)
         for ep in range(self.random_play_episodes):
             object = np.random.randint(self.env.nbObjects)
-            _ = self.play2(object, random_goals, random_actions)
+            self.env.reset()
+            transitions = self.play(object, random_goals, random_actions)
+            self.memorize1(object, transitions)
 
         for ep in range(self.episodes):
 
-            object_selector.update_probs()
-            p = object_selector.get_probs()
-            object = np.random.choice(object_selector.K, p=p)
-            object_selector.attempts[object] += 1
+            object = self.object_selector.select()
 
             self.train(object)
             self.env.reset()
-            transitions = self.play2(object, goal_selector, action_selector)
+            transitions = self.play(object, self.goal_selector, self.action_selector)
+            self.memorize1(object, transitions)
 
-            reward = evaluator.get_reward(transitions)
+            for evaluator in evaluators:
+                _ = evaluator.get_reward()
 
-            object_selector.update_weights(object, reward)
+            # self.object_selector.update_weights(object, reward)
 
             if ep % self.log_freq == 0:
-                self.stats['objselector'] = object_selector.stats
-                self.stats['evaluator'] = evaluator.stats
+                self.stats['objselector'] = self.object_selector.stats
+                for evaluator in evaluators:
+                    self.stats[evaluator.name + '_eval'] = evaluator.stats
                 self.log()
 
     # def end_episode(self):

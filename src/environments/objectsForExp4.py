@@ -12,21 +12,25 @@ class Obj():
         self.init_state = init_state
         self.state = np.zeros_like(init_state)
 
-class Objects(Env):
+class ObjectsForExp4(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, seed=None, nbFeatures=3, nbObjects=2, density=0.1, nbActions=5, amplitude=0.5):
+    def __init__(self, seed=None, nbFeatures=3, density=0.5, nbActions=5, amplitude=0.5):
         self.nbFeatures = nbFeatures
-        self.nbObjects = nbObjects
+        self.nbObjects = 21
         self.nbActions = nbActions
         self.lastaction = None
         rng = np.random.RandomState(seed)
-        self.FFNs = [FeedForwardNetwork(self.nbFeatures, [8], self.nbFeatures, rng, density, amplitude)
+        self.FFNs = [FeedForwardNetwork(self.nbFeatures, [8], self.nbFeatures - 1, rng, density, amplitude)
                      for _ in range(self.nbActions - 1)]
         self.centers = np.vstack([rng.uniform(-1, 1, size=self.nbFeatures)
                                   for _ in range(self.nbActions - 1)])
+
+        init_states = [np.hstack([rng.uniform(-1, 1, size=self.nbFeatures - 1), 0.5]) for _ in range(16)] + \
+                      [np.hstack([rng.uniform(-1, 1, size=self.nbFeatures - 1), -0.5]) for _ in range(4)] + \
+                      [np.hstack([rng.uniform(-1, 1, size=self.nbFeatures - 1), 0]) for _ in range(1)]
+
         self.objects = []
-        init_states = [rng.uniform(-1, 1, size=self.nbFeatures) for _ in range(self.nbObjects)]
         for init_state in init_states:
             self.objects.append(Obj(self, init_state=init_state))
 
@@ -48,7 +52,7 @@ class Objects(Env):
     def next_state(self, state, a):
         if a < self.nbActions - 1 and np.linalg.norm(state - self.centers[a]) < 10:
             output = self.FFNs[a].forward(state)
-            state += output.squeeze()
+            state[:-1] += output.squeeze()
         return state
 
     def reset(self):

@@ -5,7 +5,7 @@ import brewer2mpl
 import matplotlib.cm as cm
 
 # dirs = ['0201', '0401', '0301', '0601', '0701', '0801', '0901', '1101', '1201', '1301', '1401']
-df = pd.concat([pd.read_pickle('../log/cluster/1704/*-v0.pkl')], ignore_index=True)
+df = pd.concat([pd.read_pickle('../log/cluster/0305/*-v0.pkl')], ignore_index=True)
 
 def quant_inf(x):
     return x.quantile(0.25)
@@ -36,20 +36,29 @@ params = [
           '--lambda',
           '--nbObjects',
           '--nbFeatures',
-          '--nbDependences',
+          '--nbActions',
+          '--density',
+          '--amplitude',
           '--evaluator',
-          '--objectselector',
+          '--objects',
           '--exp4gamma',
           # '--exp4beta',
           '--exp4eta',
-          '--goalselector',
-          '--actionselector',
-          '--train_episodes',
+          '--goals',
+          '--actions',
+    '--dropout',
+    '--l2reg',
+    '--episodes',
+    '--seed',
+    '--experts'
           # '--seed'
           ]
 
 df1 = df.copy()
-df1 = df1[(df1['--env'] == 'ObjectsEasy-v0')]
+df1 = df1[(df1['--env'] == 'Objects-v0')]
+df1 = df1[(df1['--nstep'] == 1)]
+df1 = df1[(df1['--dropout'] == 1)]
+df1 = df1[(df1['--l2reg'] == 0)]
 # df1 = df1[(df1['--exp4gamma'] == 0.01)]
 # df1 = df1[(df1['--exp4beta'] == 100)]
 # df1 = df1[(df1['--exp4eta'] == 0.01)]
@@ -60,7 +69,7 @@ df1 = df1[(df1['--env'] == 'ObjectsEasy-v0')]
 df1.fillna(method='ffill', inplace=True)
 
 # df1 = df1[(df1['--objectselector'] == 'rndobject')]
-y = ['objs_last_eval']
+y = ['train_reward_eval_eval']
 x = ['trainstep']
 
 paramsStudied = []

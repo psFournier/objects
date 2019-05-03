@@ -1,4 +1,7 @@
 from src.environments.objects import Objects
+from src.environments.objectsId import ObjectsId
+from src.environments.objectsForExp4 import ObjectsForExp4
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.cm as cm
@@ -19,27 +22,33 @@ if __name__ == '__main__':
 
     colors = np.array(['#377eb8', '#ff7f00'])
     # np.random.seed(1000)
-    env = Objects(seed=None)
+    env = ObjectsId(seed=11)
     fig = plt.figure()
-    ax1 = fig.add_subplot(111, projection='3d')
+    ax1 = fig.add_subplot(211, projection='3d')
+    ax2 = fig.add_subplot(212, projection='3d')
 
 
     # states = np.array([], dtype=np.int64).reshape(0, env.nbFeatures)
     cs = []
     sizes = []
-    for ep in range(env.nbObjects):
+    for ep in range(env.nbObjects - 2):
         obj = ep
         states = np.array([], dtype=np.int64).reshape(0, env.nbFeatures)
         inits = np.array([], dtype=np.int64).reshape(0, env.nbFeatures)
-        for _ in range(50):
+        for _ in range(5):
             env.reset()
             # states = np.vstack([states, np.expand_dims(env.objects[obj].state, axis=0)])
-            inits = np.vstack([inits, np.expand_dims(env.objects[obj].state, axis=0)])
+            state = env.objects[obj].state
+            inits = np.vstack([inits, np.expand_dims(state, axis=0)])
             cs.append('green')
             sizes.append(15)
             # print('______________')
             for step in range(50):
-                act = (obj, np.random.randint(5))
+                act = np.random.choice(env.nbActions - 1)
+                # nb = 0
+                # while np.linalg.norm(state - env.centers[act]) > 1 and nb < 10:
+                #     act = np.random.choice(env.nbActions - 1)
+                #     nb += 1
                 # print(act[1])
                 env.step(act)
                 state = env.objects[obj].state
@@ -52,12 +61,15 @@ if __name__ == '__main__':
                 states = np.vstack([states, np.expand_dims(state, axis=0)])
                 cs.append('yellow')
                 sizes.append(5)
+            # print(state)
 
         detector = svm.OneClassSVM(nu=0.05, kernel="rbf")
         detector.fit(states)
         y_pred = detector.predict(states)
-        ax1.scatter(inits[::1, 0], inits[::1, 1], inits[::1, 2], s=40, color='red')
+        ax1.scatter(inits[::1, 0], inits[::1, 1], inits[::1, 2], s=100, color='red')
         ax1.scatter(states[::1, 0], states[::1, 1], states[::1, 2], s=10, color=colors[(y_pred[::1] + 1) // 2])
+        ax2.scatter(inits[::1, 1], inits[::1, 2], inits[::1, 3], s=100, color='red')
+        ax2.scatter(states[::1, 1], states[::1, 2], states[::1, 3], s=10, color=colors[(y_pred[::1] + 1) // 2])
 
 
     ax1.set_xlabel('X Label')
@@ -66,9 +78,15 @@ if __name__ == '__main__':
     ax1.set_xlim(-1, 1)
     ax1.set_ylim(-1, 1)
     ax1.set_zlim(-1, 1)
+    ax2.set_xlabel('X Label')
+    ax2.set_ylabel('Y Label')
+    ax2.set_zlabel('Z Label')
+    ax2.set_xlim(-1, 1)
+    ax2.set_ylim(-1, 1)
+    ax2.set_zlim(-1, 1)
     # ax1.scatter(states[::5, 0], states[::5, 1], states[::5, 2], s=sizes[::5], color=cs[::5])
-    ax1.scatter(env.centers[:,0], env.centers[:,1], env.centers[:,2], s=30, color='blue')
-
+    # ax1.scatter(env.centers[:,0], env.centers[:,1], env.centers[:,2], s=30, color='green')
+    # ax2.scatter(env.centers[:, 1], env.centers[:, 2], env.centers[:, 3], s=30, color='green')
     # ax2 = fig.add_subplot(122, projection='3d')
     # ax2.set_xlabel('X Label')
     # ax2.set_ylabel('Y Label')

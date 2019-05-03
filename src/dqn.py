@@ -6,7 +6,7 @@ from keras.optimizers import Adam
 import keras.backend as K
 from keras.layers.merge import concatenate, multiply, add, subtract, maximum, Dot
 import numpy as np
-from utils import softmax
+from utils import softmax, merge_two_dicts
 
 class Controller(object):
     def __init__(self, wrapper, nstep, _gamma, _lambda, IS, layers, dropout, l2reg):
@@ -68,7 +68,8 @@ class Controller(object):
         inputs, stats = self.get_inputs(exps)
         loss, qval, td_errors = self._train(inputs)
         self.target_train()
-        return {'loss': loss, 'qval': np.mean(qval), 'tderror': np.mean(td_errors)}
+        stats = merge_two_dicts(stats, {'loss': loss, 'qval': np.mean(qval), 'tderror': np.mean(td_errors)})
+        return stats
 
     def get_inputs(self, exps):
         nStepExpes = self.getNStepSequences(exps)

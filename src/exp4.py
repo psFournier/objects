@@ -2,6 +2,20 @@ import numpy as np
 from utils import softmax
 from collections import deque
 
+class Uniform_object_selector(object):
+    def __init__(self, K):
+        self.K = K
+
+    def select(self):
+        return np.random.randint(self.K)
+
+    def update_weights(self, object, reward):
+        pass
+
+    @property
+    def stats(self):
+        return {}
+
 class EXP4(object):
     def __init__(self, experts, K, gamma, beta):
         self.gamma = gamma
@@ -29,6 +43,13 @@ class EXP4(object):
             a = self.gamma * reward * expert.probs[object]
             b = self.K * self.exp4_probs[object]
             self.experts_weights[i] *= np.exp(a/b)
+
+    def select(self):
+        self.update_probs()
+        p = self.get_probs()
+        object = np.random.choice(self.K, p=p)
+        self.attempts[object] += 1
+        return object
 
     @property
     def experts_probs(self):

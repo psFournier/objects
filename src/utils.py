@@ -43,9 +43,14 @@ def softmax(X, theta=1.0, axis=None):
 
     return p
 
+def merge_two_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
+
 class FeedForwardNetwork:
 
-    def __init__(self, nIn, nHiddens, nOut, rng, density):
+    def __init__(self, nIn, nHiddens, nOut, rng, density, amplitude):
 
         self.nPerLayer = [nIn] + nHiddens + [nOut]
         self.weights = []
@@ -55,7 +60,7 @@ class FeedForwardNetwork:
             self.weights.append(sparse.random(nO, nI + 1,
                                               density=density,
                                               random_state=rng,
-                                              data_rvs=lambda s: rng.uniform(-0.1, 0.1, size=s)).toarray())
+                                              data_rvs=lambda s: rng.uniform(-amplitude, amplitude, size=s)).toarray())
             self.activations.append(np.zeros((nO, 1), dtype=float))
             self.outputs.append(np.zeros((nI + 1, 1), dtype=float))
         self.outputs.append(np.zeros((nOut,), dtype=float))

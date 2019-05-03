@@ -9,8 +9,7 @@ class ObjectsOneGoal(Wrapper):
         self.rTerm = 0 - float(args['--initq'])
         self.stats = {'changes': 0}
 
-    def get_state(self, object):
-        state = self.env.state
+    def get_state(self, object, state):
         start = object * self.env.nbFeatures
         object_state = state[start:start+self.env.nbFeatures]
         return object_state
@@ -19,8 +18,9 @@ class ObjectsOneGoal(Wrapper):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        d = np.abs(s[...,0])
-        r = (d < 0.01) * self.rTerm + (1 - (d < 0.01)) * self.rNotTerm
+        diff = np.reshape(s[...,-1] - 1, (-1, 1))
+        d = np.linalg.norm(diff, axis=-1)
+        r = (d < 0.1) * self.rTerm + (1 - (d < 0.1)) * self.rNotTerm
         return r, np.zeros_like(r)
 
     # def reset(self, state):

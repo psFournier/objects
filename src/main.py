@@ -13,9 +13,9 @@ from actionSelectors import Random_action_selector, State_goal_action_selector, 
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
-from exp4 import EXP4
+from exp4 import EXP4, Uniform_object_selector
 from experts import Reached_states_variance_maximizer_expert, Uniform_expert
-from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator
+from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Reward_evaluator, Test_episode_evaluator
 
 help = """
 
@@ -24,8 +24,8 @@ Usage:
 
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
-  --initq VAL              [default: -100]
-  --layers VAL             [default: 32]
+  --initq VAL              [default: 0]
+  --layers VAL             [default: 128,128]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
@@ -36,6 +36,7 @@ Options:
   --nbFeatures VAL         [default: 3]
   --nbActions VAL          [default: 10]
   --density VAL            [default: 0.1]
+  --amplitude VAL            [default: 0.1]
   --evaluator VAL          [default: approxglobal]
   --objects VAL     [default: rndobject]
   --exp4gamma VAL          [default: 0.1]
@@ -45,7 +46,7 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --episodes VAL     [default: 1000]
+  --episodes VAL     [default: 200]
   --rndepisodes VAL     [default: 20]
   --seed SEED              Random seed
   --experts VAL            [default: uni]
@@ -63,12 +64,13 @@ if __name__ == '__main__':
 
     register(
         id='Objects-v0',
-        entry_point='environments:Objects',
+        entry_point='environments:ObjectsId',
         kwargs={'seed': int(args['--seed']),
                 'nbObjects': int(args['--nbObjects']),
                 'nbFeatures': int(args['--nbFeatures']),
                 'nbActions': int(args['--nbActions']),
-                'density': float(args['--density'])},
+                'density': float(args['--density']),
+                'amplitude': float(args['--amplitude'])},
         wrapper_entry_point='env_wrappers.objectsOneGoal:ObjectsOneGoal'
     )
 
@@ -120,10 +122,6 @@ if __name__ == '__main__':
     }
     experts_names = [name for name in args['--experts'].split(',')]
     experts = [experts_dict[name](agent) for name in experts_names]
-    object_selector = EXP4(experts=experts,
-                           K=env.nbObjects,
-                           gamma=float(args['--exp4gamma']),
-                           beta=float(args['--exp4beta']))
     goal_selectors = {
         'buffer': Buffer_goal_selector,
         'uniform': Uniform_goal_selector,
@@ -134,10 +132,12 @@ if __name__ == '__main__':
         'sg': State_goal_action_selector,
         's': State_action_selector
     }
-    evaluator = Qval_evaluator(agent)
-    goal_selector = goal_selectors[args['--goals']](agent)
-    action_selector = action_selectors[args['--actions']](agent)
-    agent.learn3(object_selector=object_selector,
-                 goal_selector=goal_selector,
-                 action_selector=action_selector,
-                 evaluator=evaluator)
+    evaluators = [Reward_evaluator(agent), Test_episode_evaluator(agent)]
+    # agent.object_selector = EXP4(experts=experts,
+    #                              K=env.nbObjects,
+    #                              gamma=float(args['--exp4gamma']),
+    #                              beta=float(args['--exp4beta']))
+    agent.object_selector = Uniform_object_selector(K=3)
+    agent.goal_selector = goal_selectors[args['--goals']](agent)
+    agent.action_selector = action_selectors[args['--actions']](agent)
+    agent.learn3(evaluators=evaluators)
