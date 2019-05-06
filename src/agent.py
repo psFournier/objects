@@ -23,7 +23,7 @@ class Agent(object):
             self.stats['train{}'.format(object)] = {'divide': 0, 'loss':0, 'qval': 0, 'tderror':0, 'rho':0, 'target_mean':0, 'mean_reward':0}
             self.stats['play{}'.format(object)] = {'reward':0, 'divide':0}
         self.stats['train'] = {'loss': 0, 'divide':0, 'qval': 0, 'tderror':0, 'rho':0, 'target_mean':0, 'mean_reward':0}
-        self.stats['play'] = {}
+        self.stats['play'] = {'reward':0, 'divide':0}
 
         self.batch_size = 64
         self.env_steps = 200
@@ -80,6 +80,8 @@ class Agent(object):
             self.buffer.append(tr)
         self.stats['play{}'.format(object)]['reward'] += reward
         self.stats['play{}'.format(object)]['divide'] += 1
+        self.stats['play']['reward'] += reward
+        self.stats['play']['divide'] += 1
 
     def memorize2(self, object, transitions):
         rewards = [0 for _ in self.env.objects]
@@ -160,7 +162,7 @@ class Agent(object):
         random_goals = No_goal_selector(self)
         random_actions = Random_action_selector(self)
         for ep in range(self.random_play_episodes):
-            object = np.random.randint(self.env.nbObjects)
+            object = self.object_selector.select()
             self.env.reset()
             transitions = self.play(object, random_goals, random_actions)
             self.memorize1(object, transitions)
@@ -182,7 +184,7 @@ class Agent(object):
             if ep % self.log_freq == 0:
                 self.stats['objselector'] = self.object_selector.stats
                 for evaluator in evaluators:
-                    self.stats[evaluator.name + '_eval'] = evaluator.stats
+                    self.stats[evaluator.name] = evaluator.stats
                 self.log()
 
     # def end_episode(self):

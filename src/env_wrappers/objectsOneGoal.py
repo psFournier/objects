@@ -5,8 +5,10 @@ class ObjectsOneGoal(Wrapper):
     def __init__(self, env, args):
         super(ObjectsOneGoal, self).__init__(env)
         self.gamma = 0.99
-        self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
-        self.rTerm = 0 - float(args['--initq'])
+        # self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
+        # self.rTerm = 0 - float(args['--initq'])
+        self.rNotTerm = -0.01 # Careful with target clipping when changing these
+        self.rTerm = 0.99
         self.stats = {'changes': 0}
 
     def get_state(self, object, state):
@@ -18,9 +20,9 @@ class ObjectsOneGoal(Wrapper):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        diff = s[..., 2:] - self.env.last_state
+        diff = (s[..., 2:] - self.env.goal).reshape(-1, 2)
         d = np.linalg.norm(diff, axis=-1)
-        r = (d < 0.1) * self.rTerm + (1 - (d < 0.1)) * self.rNotTerm
+        r = (d < 0.05) * self.rTerm + (1 - (d < 0.05)) * self.rNotTerm
         return r, np.zeros_like(r)
 
     # def reset(self, state):

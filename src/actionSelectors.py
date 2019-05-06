@@ -10,12 +10,12 @@ class Random_action_selector(object):
 
 class State_goal_action_selector(object):
     def __init__(self, agent):
-        self.model = agent.model
+        self.agent = agent
 
     def select(self, state, goal):
         input = [np.expand_dims(state, axis=0), np.expand_dims(goal, axis=0)]
-        qvals = self.model._qvals(input)[0].squeeze()
-        probs = softmax(qvals, theta=1)
+        qvals = self.agent.model._qvals(input)[0].squeeze()
+        probs = softmax(qvals, theta=1 + 99 * min(1, self.agent.train_step/20000))
         action = np.random.choice(len(probs), p=probs)
         return action, probs
 

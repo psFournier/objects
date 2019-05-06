@@ -8,14 +8,15 @@ class Test_episode_evaluator(object):
 
     def get_reward(self):
         eval = 0
-        for object in range(self.agent.env.nbObjects - 2, self.agent.env.nbObjects):
+        for object in range(self.agent.object_selector.K, self.agent.env.nbObjects):
             self.agent.env.reset()
             test_ep = self.agent.play(object, self.agent.goal_selector, self.agent.action_selector)
             for t in test_ep[object]:
                 r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
                 eval += r[0]
-        reward = eval / 2 - self.last_eval
-        self.last_eval = eval / 2
+        eval /= (self.agent.env.nbObjects - self.agent.object_selector.K)
+        reward = eval - self.last_eval
+        self.last_eval = eval
         return reward
 
     @property
@@ -72,24 +73,24 @@ class Reached_goals_variance_evaluator(object):
     def stats(self):
         return {'eval': self.last_eval}
 
-class Reward_evaluator(object):
-    def __init__(self, agent):
-        self.last_eval = 0
-        self.agent = agent
-        self.name = 'train_reward'
-
-    def get_reward(self):
-        eval = 0
-        for t in self.agent.last_ep:
-            r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
-            eval += r[0]
-        reward = eval - self.last_eval
-        self.last_eval = eval
-        return reward
-
-    @property
-    def stats(self):
-        return {'eval': self.last_eval}
+# class Reward_evaluator(object):
+#     def __init__(self, agent):
+#         self.last_eval = 0
+#         self.agent = agent
+#         self.name = 'train_reward'
+#
+#     def get_reward(self):
+#         eval = 0
+#         for t in self.agent.last_ep:
+#             r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
+#             eval += r[0]
+#         reward = eval - self.last_eval
+#         self.last_eval = eval
+#         return reward
+#
+#     @property
+#     def stats(self):
+#         return {'eval': self.last_eval}
 
 class Qval_evaluator(object):
     def __init__(self, agent):

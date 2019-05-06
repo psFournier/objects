@@ -15,7 +15,7 @@ from env_wrappers.registration import register
 from agent import Agent
 from exp4 import EXP4, Uniform_object_selector
 from experts import Reached_states_variance_maximizer_expert, Uniform_expert
-from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Reward_evaluator, Test_episode_evaluator
+from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator
 
 help = """
 
@@ -24,7 +24,7 @@ Usage:
 
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
-  --initq VAL              [default: 0]
+  --initq VAL              [default: -100]
   --layers VAL             [default: 128,128]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
@@ -50,6 +50,7 @@ Options:
   --rndepisodes VAL     [default: 20]
   --seed SEED              Random seed
   --experts VAL            [default: uni]
+  --nbObjectsTrain VAL     [default: 1]
   
 """
 
@@ -132,12 +133,13 @@ if __name__ == '__main__':
         'sg': State_goal_action_selector,
         's': State_action_selector
     }
-    evaluators = [Reward_evaluator(agent), Test_episode_evaluator(agent)]
+    # Careful with the exploration in the action selector
+    evaluators = []
     # agent.object_selector = EXP4(experts=experts,
     #                              K=env.nbObjects,
     #                              gamma=float(args['--exp4gamma']),
     #                              beta=float(args['--exp4beta']))
-    agent.object_selector = Uniform_object_selector(K=3)
+    agent.object_selector = Uniform_object_selector(K=int(args['--nbObjectsTrain']))
     agent.goal_selector = goal_selectors[args['--goals']](agent)
     agent.action_selector = action_selectors[args['--actions']](agent)
     agent.learn3(evaluators=evaluators)

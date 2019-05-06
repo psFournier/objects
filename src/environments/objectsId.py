@@ -26,15 +26,22 @@ class ObjectsId(Env):
         self.centers = np.vstack([rng.uniform(-1, 1, size=self.nbFeatures)
                                   for _ in range(self.nbActions - 1)])
         self.objects = []
-        state = np.array([0.1,-0.1])
-        states = [state.copy()]
-        for _ in range(100):
-            state = np.clip(self.FFNs[np.random.randint(self.nbActions - 1)].forward(state), -1, 1).squeeze()
-            if (state != states[-1]).any():
-                states.append(state.copy())
-        idxs = np.sort(np.random.choice(len(states), self.nbObjects + 1))
-        init_states = [np.hstack([np.random.uniform(-1, 1, 2), states[idx]]) for idx in idxs[:-1]]
-        self.last_state = [states[idxs[-1]]]
+        states = np.array([]).reshape(0, 2)
+        for _ in range(20):
+            states = np.vstack([states, np.expand_dims(np.array([0.4,-0.4]), axis=0)])
+            for step in range(200):
+                act = np.random.choice(self.nbActions - 1)
+                state = states[-1] + self.FFNs[act].forward(states[-1]).squeeze()
+                state = np.clip(state, -1, 1).squeeze()
+                states = np.vstack([states, np.expand_dims(state, axis=0)])
+        # detector = svm.OneClassSVM(nu=0.02, kernel="rbf")
+        detector = LocalOutlierFactor(n_neighbors=35, contamination=0.1)
+        detector.fit(states)
+        y_pred = (1-detector.fit_predict(states))//2
+        far = np.ones(20 * 201, dtype=int)
+        far[np.where(np.tile(np.arange(201).reshape(201, 1), reps=(20,1)) < 20)[0]] = 0
+        self.goal = states[np.random.choice(np.where(y_pred*far == 1)[0])]
+        init_states = [np.hstack([np.random.uniform(-1, 1, 2), states[0]]) for _ in range(self.nbObjects)]
         for init_state in init_states:
             self.objects.append(Obj(self, init_state=init_state))
 
