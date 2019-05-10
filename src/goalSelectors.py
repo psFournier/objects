@@ -9,20 +9,42 @@ class Uniform_goal_selector(object):
 
 class No_goal_selector(object):
     def __init__(self, agent):
-        self.nbFeatures = agent.env.nbFeatures
+        self.agent = agent
+        self.name = 'no_goal'
 
     def select(self, object):
         return np.array([])
 
+    @property
+    def stats(self):
+        d = {}
+        return d
+
 class Buffer_goal_selector(object):
     def __init__(self, agent):
-        self.buffer = agent.buffer
-        self.nbFeatures = agent.env.nbFeatures
+        self.agent = agent
+        self.dist_to_goal = 0
+        self.stat_steps = 0
+        self.name = 'buffer_goal'
 
     def select(self, object):
-        try:
-            rnd_exp_from_object = self.buffer.sample(1, object)
-            goal = rnd_exp_from_object[0]['s1']
-        except:
-            goal = np.random.uniform(-1, 1, self.nbFeatures)
+        attempts = 0
+        state = self.agent.wrapper.get_state(object, self.agent.env.state)
+        while True and attempts < 100:
+            rnd_exp_from_object = self.agent.buffer.sample(1, object)
+            goal = rnd_exp_from_object[0]['s1'][1:2]
+            attempts += 1
+            if self.agent.wrapper.get_r(state, goal)[0] == self.agent.wrapper.rNotTerm:
+                break
+        if attempts == 100:
+            goal = np.random.uniform(-1, 1, 1)
+        self.dist_to_goal += np.linalg.norm(state[1] - goal)
+        self.stat_steps += 1
         return goal
+
+    @property
+    def stats(self):
+        d = {'dist': self.dist_to_goal / self.stat_steps}
+        self.stat_steps = 0
+        self.dist_to_goal = 0
+        return d

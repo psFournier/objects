@@ -1,2 +1,4 @@
 from environments.objects import Objects
 from environments.objectsId import ObjectsId
+from environments.objectsEasy import ObjectsEasy
+from environments.objectsPlayroom import ObjectsPlayroom

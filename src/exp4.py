@@ -5,6 +5,7 @@ from collections import deque
 class Uniform_object_selector(object):
     def __init__(self, K):
         self.K = K
+        self.name = 'uni_obj'
 
     def select(self):
         return np.random.randint(self.K)

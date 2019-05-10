@@ -11,6 +11,7 @@ class RandomObjectSelector(object):
 
         self.normalized_LPs = np.zeros(K)
         self.eta = eta
+        self.name = 'obj'
 
     def evaluate(self):
         self.last_eval = self.evaluator.evaluate()
@@ -27,11 +28,11 @@ class RandomObjectSelector(object):
     @property
     def stats(self):
         stats = {}
-        for i, lp in enumerate(self.LPs):
-            stats['lp_{}'.format(i)] = lp
-        for i, prob in enumerate(self.probs):
-            stats['prob_{}'.format(i)] = prob
-        stats['last_eval'] = self.last_eval
+        # for i, lp in enumerate(self.LPs):
+        #     stats['lp_{}'.format(i)] = lp
+        # for i, prob in enumerate(self.probs):
+        #     stats['prob_{}'.format(i)] = prob
+        # stats['last_eval'] = self.last_eval
         return stats
 
     @property

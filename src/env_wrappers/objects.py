@@ -5,22 +5,23 @@ class Objects(Wrapper):
     def __init__(self, env, args):
         super(Objects, self).__init__(env)
         self.gamma = 0.99
-        self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
-        self.rTerm = 0 - float(args['--initq'])
-        self.stats = {'changes': 0}
+        # self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
+        # self.rTerm = 0 - float(args['--initq'])
+        self.rNotTerm = -1  # Careful with target clipping when changing these
+        self.rTerm = 0
 
-    def get_state(self, object):
-        state = self.env.state
+    def get_state(self, object, state):
         start = object * self.env.nbFeatures
-        object_state = state[start:start+self.env.nbFeatures]
+        object_state = state[start:start + self.env.nbFeatures]
         return object_state
 
     def step(self, pairObjAction):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        d = np.linalg.norm(s-g, axis=-1)
-        r = (d < 0.01) * self.rTerm + (1 - (d < 0.01)) * self.rNotTerm
+        diff = s.reshape(-1, self.env.nbFeatures)[:,1:2] - g.reshape(-1, 1)
+        d = np.linalg.norm(diff, axis=-1)
+        r = (d < 0.05) * self.rTerm + (1 - (d < 0.05)) * self.rNotTerm
         return r, np.zeros_like(r)
 
     # def reset(self, state):
@@ -104,7 +105,7 @@ class Objects(Wrapper):
 
     @property
     def goal_dim(self):
-        return self.env.nbFeatures
+        return 1
 
     @property
     def action_dim(self):

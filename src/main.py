@@ -9,13 +9,14 @@ from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_eva
     ApproxError_global_evaluator, ApproxError_objects_evaluator, ApproxError_changes_evaluator
 # from objectSelectors import EXP4, RandomObjectSelector, EXP4SSP
 from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_selector
-from actionSelectors import Random_action_selector, State_goal_action_selector, State_action_selector
+from actionSelectors import Random_action_selector, State_goal_soft_action_selector, State_action_selector
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
 from exp4 import EXP4, Uniform_object_selector
 from experts import Reached_states_variance_maximizer_expert, Uniform_expert
-from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator
+from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator
+from players import Player
 
 help = """
 
@@ -25,7 +26,7 @@ Usage:
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
   --initq VAL              [default: -100]
-  --layers VAL             [default: 128,128]
+  --layers VAL             [default: 128]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
@@ -46,7 +47,7 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --episodes VAL     [default: 200]
+  --episodes VAL     [default: 4000]
   --rndepisodes VAL     [default: 20]
   --seed SEED              Random seed
   --experts VAL            [default: uni]
@@ -65,17 +66,18 @@ if __name__ == '__main__':
 
     register(
         id='Objects-v0',
-        entry_point='environments:ObjectsId',
+        entry_point='environments:'+args['--env'],
         kwargs={'seed': int(args['--seed']),
                 'nbObjects': int(args['--nbObjects']),
-                'nbFeatures': int(args['--nbFeatures']),
-                'nbActions': int(args['--nbActions']),
-                'density': float(args['--density']),
-                'amplitude': float(args['--amplitude'])},
-        wrapper_entry_point='env_wrappers.objectsOneGoal:ObjectsOneGoal'
+                # 'nbFeatures': int(args['--nbFeatures']),
+                # 'nbActions': int(args['--nbActions']),
+                # 'density': float(args['--density']),
+                # 'amplitude': float(args['--amplitude'])
+                },
+        wrapper_entry_point='env_wrappers.objects:Objects'
     )
 
-    env, wrapper = make(args['--env'], args)
+    env, wrapper = make('Objects-v0', args)
     model = Controller(wrapper,
                        nstep=1,
                        _gamma=0.99,
@@ -87,36 +89,7 @@ if __name__ == '__main__':
     # model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]),
     #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
     agent = Agent(args, env, wrapper, model, [loggerTB, loggerStdoutJSON])
-    # evaluators = {
-    #     'tderror': TDerror_evaluator(agent.buffer, agent.model, agent.wrapper),
-    #     'approxbuffer': ApproxError_buffer_evaluator(agent.buffer, agent.model),
-    #     'approxglobal': ApproxError_global_evaluator(env, agent.model),
-    #     'approxobject': ApproxError_objects_evaluator(env, agent.model),
-    #     'approxchange': ApproxError_changes_evaluator(env, agent.model)
-    # }
-    # evaluators = {
-    #     'tderror': TDerror_evaluator,
-    #     'approxbuffer': ApproxError_buffer_evaluator,
-    #     'approxglobal': ApproxError_global_evaluator,
-    #     'approxobject': ApproxError_objects_evaluator,
-    #     'approxchange': ApproxError_changes_evaluator
-    # }
-    # evaluator = evaluators[args['--evaluator']](env, agent.model)
-    #
-    # object_selectors = {
-    #     'exp4object': EXP4(K=env.nbObjects,
-    #                        evaluator=evaluator,
-    #                        gamma=float(args['--exp4gamma']),
-    #                        beta=float(args['--exp4beta']),
-    #                        eta=float(args['--exp4eta'])),
-    #     'rndobject': RandomObjectSelector(env.nbObjects, evaluator, eta=float(args['--exp4eta'])),
-    #     'exp4ssp': EXP4SSP(K=env.nbObjects,
-    #                        evaluator=evaluator,
-    #                        gamma=float(args['--exp4gamma']),
-    #                        beta=float(args['--exp4beta']),
-    #                        eta=float(args['--exp4eta']))
-    # }
-    # object_selector = object_selectors[args['--objectselector']]
+
     experts_dict = {
         'uni': Uniform_expert,
         'rsv': Reached_states_variance_maximizer_expert
@@ -130,11 +103,11 @@ if __name__ == '__main__':
     }
     action_selectors = {
         'rnd': Random_action_selector,
-        'sg': State_goal_action_selector,
+        'sgsoft': State_goal_soft_action_selector,
         's': State_action_selector
     }
     # Careful with the exploration in the action selector
-    evaluators = []
+    evaluators = [Test_episode_evaluator(agent), Train_episode_evaluator(agent)]
     # agent.object_selector = EXP4(experts=experts,
     #                              K=env.nbObjects,
     #                              gamma=float(args['--exp4gamma']),
@@ -142,4 +115,6 @@ if __name__ == '__main__':
     agent.object_selector = Uniform_object_selector(K=int(args['--nbObjectsTrain']))
     agent.goal_selector = goal_selectors[args['--goals']](agent)
     agent.action_selector = action_selectors[args['--actions']](agent)
-    agent.learn3(evaluators=evaluators)
+    agent.player = Player(agent)
+    agent.evaluators = evaluators
+    agent.learn()

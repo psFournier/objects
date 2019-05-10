@@ -15,14 +15,24 @@ class Obj():
 class ObjectsId(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, seed=None, nbFeatures=4, nbObjects=10, density=0.5, nbActions=5, amplitude=0.5):
+    def __init__(self, seed=None, nbFeatures=4, nbObjects=10, density=0.1, nbActions=5, amplitude=1):
         self.nbFeatures = nbFeatures
         self.nbObjects = nbObjects
         self.nbActions = nbActions
         self.lastaction = None
         rng = np.random.RandomState(seed)
-        self.FFNs = [FeedForwardNetwork(self.nbFeatures - 2, [8], self.nbFeatures - 2, rng, density, amplitude)
-                     for _ in range(self.nbActions - 1)]
+        while True:
+            self.FFNs = [FeedForwardNetwork(self.nbFeatures - 2, [2*i], self.nbFeatures - 2, rng, density, amplitude)
+                         for i in range(self.nbActions - 1)]
+            nb = 0
+            for i,f in enumerate(self.FFNs):
+                if np.max(np.abs(np.dot(np.transpose(f.weights[0]), np.transpose(f.weights[1])[:2*i,:]))) > 0:
+                    nb += 1
+            print(nb)
+            if nb > 0:
+
+                break
+
         self.centers = np.vstack([rng.uniform(-1, 1, size=self.nbFeatures)
                                   for _ in range(self.nbActions - 1)])
         self.objects = []

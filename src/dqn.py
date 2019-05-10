@@ -16,6 +16,7 @@ class Controller(object):
         self.IS = IS
         self.layers = layers
         self.wrapper = wrapper
+        self.name = 'dqn_model'
 
         S, G = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.goal_dim,))
         A = Input(shape=(1,), dtype='uint8')
@@ -38,6 +39,13 @@ class Controller(object):
 
         self.targetmodel = Model([S_target, G_target], targetQvals)
         self._targetqvals = K.function(inputs=[S_target, G_target], outputs=[targetQvals], updates=None)
+
+        self.rho = 0
+        self.target = 0
+        self.reward = 0
+        self.qval = 0
+        self.tderror = 0
+        self.stat_steps = 0
 
     def target_train(self):
         weights = self.model.get_weights()
@@ -65,19 +73,22 @@ class Controller(object):
         return Q_values
 
     def train(self, exps):
-        inputs, stats = self.get_inputs(exps)
+        inputs = self.get_inputs(exps)
         loss, qval, td_errors = self._train(inputs)
         self.target_train()
-        stats = merge_two_dicts(stats, {'loss': loss, 'qval': np.mean(qval), 'tderror': np.mean(td_errors)})
-        return stats
+        self.tderror += np.mean(td_errors)
+        self.qval += np.mean(qval)
+        self.stat_steps += 1
 
     def get_inputs(self, exps):
         nStepExpes = self.getNStepSequences(exps)
         nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
         states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
         inputs = [states, actions, goals, targets]
-        stats = {'rho': np.mean(rhos), 'target_mean': np.mean(targets), 'mean_reward': mean_reward}
-        return inputs, stats
+        self.rho += np.mean(rhos)
+        self.target += np.mean(targets)
+        self.reward += mean_reward
+        return inputs
 
     def getNStepSequences(self, exps):
         nStepSeqs = []
@@ -97,8 +108,15 @@ class Controller(object):
         for nStepExpe in nStepExpes:
             first = nStepExpe[0]
             l = len(nStepExpe)
-            g = first['g']
-            goals += [g] * (l+1)
+
+            # potential_goals = []
+            # if first['g'].shape == first['s1'].shape:
+            #     potential_goals.append(first['g'])
+            # potential_goals += [first[key] for key in first.keys() if key.startswith('her_g')]
+            # g = potential_goals[np.random.randint(len(potential_goals))]
+            # goals += [g] * (l+1)
+
+            goals += [first['g']] * (l+1)
             for exp in nStepExpe:
                 states.append(exp['s0'])
             states.append(nStepExpe[-1]['s1'])
@@ -142,7 +160,7 @@ class Controller(object):
                 b = np.sum(np.multiply(exp1['pi'], exp1['tq']), keepdims=True)
                 b = exp0['reward'] + (1 - exp0['terminal']) * self._gamma * b
                 #TODO influence target clipping
-                # b = np.clip(b, self.wrapper.rNotTerm / (1 - self._gamma), self.wrapper.rTerm / (1 - self._gamma))
+                b = np.clip(b, self.wrapper.rNotTerm / (1 - self._gamma), self.wrapper.rTerm / (1 - self._gamma))
                 tdErrors.append((b - exp0['q'][exp0['a0']]).squeeze())
 
                 ### Calcul des ratios variable selon la méthode
@@ -170,3 +188,18 @@ class Controller(object):
 
         res = [np.vstack(x) for x in [states, goals, actions, targets, ros]]
         return res
+
+    @property
+    def stats(self):
+        d = {'qval':self.qval / self.stat_steps,
+                'tderror': self.tderror / self.stat_steps,
+                'target': self.target / self.stat_steps,
+                'reward': self.reward / self.stat_steps,
+                'rho': self.rho / self.stat_steps}
+        self.stat_steps = 0
+        self.qval = 0
+        self.tderror = 0
+        self.reward = 0
+        self.rho = 0
+        self.target = 0
+        return d

@@ -57,10 +57,12 @@ class FeedForwardNetwork:
         self.activations = []
         self.outputs = []
         for nI, nO in zip(self.nPerLayer[:-1], self.nPerLayer[1:]):
-            self.weights.append(sparse.random(nO, nI + 1,
-                                              density=density,
-                                              random_state=rng,
-                                              data_rvs=lambda s: rng.uniform(-amplitude, amplitude, size=s)).toarray())
+            w = sparse.random(nO, nI,
+                              density=density,
+                              random_state=rng,
+                              data_rvs=lambda s: rng.uniform(-amplitude, amplitude, size=s)).toarray()
+            w = np.concatenate([w, rng.uniform(-amplitude, amplitude, size=(nO, 1))], axis=1)
+            self.weights.append(w)
             self.activations.append(np.zeros((nO, 1), dtype=float))
             self.outputs.append(np.zeros((nI + 1, 1), dtype=float))
         self.outputs.append(np.zeros((nOut,), dtype=float))
