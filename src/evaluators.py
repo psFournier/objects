@@ -1,5 +1,6 @@
 import numpy as np
 from actionSelectors import State_goal_max_action_selector
+from players import Player
 
 class Test_episode_evaluator(object):
     def __init__(self, agent):
@@ -9,31 +10,24 @@ class Test_episode_evaluator(object):
         self.reward = 0
         self.stat_steps = 0
         self.action_selector = State_goal_max_action_selector(agent)
+        self.player = Player(agent)
 
     def get_reward(self):
         eval = 0
         for object in range(self.agent.object_selector.K, self.agent.env.nbObjects):
-            self.agent.env.reset()
-            test_ep = self.agent.player.play(object, self.agent.goal_selector, self.action_selector)
-            for t in test_ep[object]:
-                r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
-                eval += r[0]
+            _, r = self.player.play(object, self.agent.goal_selector, self.action_selector)
+            eval += r
         if self.agent.object_selector.K < self.agent.env.nbObjects:
             eval /= (self.agent.env.nbObjects - self.agent.object_selector.K)
             reward = eval - self.last_eval
             self.last_eval = eval
-            self.reward += eval
         else:
             reward = 0
-        self.stat_steps += 1
         return reward
 
     @property
     def stats(self):
-        d = {'reward': self.reward / self.stat_steps}
-        self.reward = 0
-        self.stat_steps = 0
-        return d
+        return self.player.stats
 
 class Train_episode_evaluator(object):
     def __init__(self, agent):
@@ -43,28 +37,21 @@ class Train_episode_evaluator(object):
         self.reward = 0
         self.stat_steps = 0
         self.action_selector = State_goal_max_action_selector(agent)
+        self.player = Player(agent)
 
     def get_reward(self):
         eval = 0
         for object in range(0, self.agent.object_selector.K):
-            self.agent.env.reset()
-            test_ep = self.agent.player.play(object, self.agent.goal_selector, self.action_selector)
-            for t in test_ep[object]:
-                r, t = self.agent.wrapper.get_r(t['s1'], t['g'])
-                eval += r[0]
+            _, r = self.player.play(object, self.agent.goal_selector, self.action_selector)
+            eval += r
         eval /= self.agent.object_selector.K
         reward = eval - self.last_eval
         self.last_eval = eval
-        self.reward += eval
-        self.stat_steps += 1
         return reward
 
     @property
     def stats(self):
-        d = {'reward': self.reward / self.stat_steps}
-        self.reward = 0
-        self.stat_steps = 0
-        return d
+        return self.player.stats
 
 
 class Reached_states_variance_evaluator(object):

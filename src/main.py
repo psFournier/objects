@@ -26,7 +26,7 @@ Usage:
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
   --initq VAL              [default: -100]
-  --layers VAL             [default: 128]
+  --layers VAL             [default: 32]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
@@ -48,7 +48,7 @@ Options:
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
   --episodes VAL     [default: 4000]
-  --rndepisodes VAL     [default: 20]
+  --rndepisodes VAL     [default: 200]
   --seed SEED              Random seed
   --experts VAL            [default: uni]
   --nbObjectsTrain VAL     [default: 1]

@@ -39,8 +39,8 @@ if __name__ == '__main__':
             inits = np.vstack([inits, np.expand_dims(state, axis=0)])
             states = np.vstack([states, np.expand_dims(state, axis=0)])
             # print('______________')
-            for step in range(50):
-                act = np.random.choice(env.nbActions - 1)
+            for step in range(1000):
+                act = np.random.randint(0, env.nbActions - 1)
                 # nb = 0
                 # while np.linalg.norm(state - env.centers[act]) > 1 and nb < 10:
                 #     act = np.random.choice(env.nbActions - 1)

@@ -160,7 +160,7 @@ class Controller(object):
                 b = np.sum(np.multiply(exp1['pi'], exp1['tq']), keepdims=True)
                 b = exp0['reward'] + (1 - exp0['terminal']) * self._gamma * b
                 #TODO influence target clipping
-                b = np.clip(b, self.wrapper.rNotTerm / (1 - self._gamma), self.wrapper.rTerm / (1 - self._gamma))
+                b = np.clip(b, self.wrapper.rNotTerm / (1 - self._gamma), self.wrapper.rTerm)
                 tdErrors.append((b - exp0['q'][exp0['a0']]).squeeze())
 
                 ### Calcul des ratios variable selon la méthode

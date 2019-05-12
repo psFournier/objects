@@ -60,7 +60,7 @@ class Agent(object):
             for j, idx in enumerate(her_goals_idx):
                 if idx >= i:
                     tr_her = tr.copy()
-                    tr_her['g'] = on_policy_transitions[idx]['s1'][1:2]
+                    tr_her['g'] = on_policy_transitions[idx]['s1'][0:1]
                     self.buffer.append(tr_her)
 
     def memorize(self, object, transitions):
@@ -88,8 +88,8 @@ class Agent(object):
         random_actions = Random_action_selector(self)
         for ep in range(self.random_play_episodes):
             object = self.object_selector.select()
-            self.env.reset()
-            transitions = self.player.play(object, random_goals, random_actions)
+            transitions,_ = self.player.play(object, random_goals, random_actions)
+            # print(self.player.reward)
             self.env_step += self.env_steps
             self.memorize_her(object, transitions)
 
@@ -98,8 +98,8 @@ class Agent(object):
             object = self.object_selector.select()
 
             self.train(object)
-            self.env.reset()
-            transitions = self.player.play(object, self.goal_selector, self.action_selector)
+            transitions,_ = self.player.play(object, self.goal_selector, self.action_selector)
+            # print(self.player.reward)
             self.env_step += self.env_steps
             self.memorize_her(object, transitions)
 

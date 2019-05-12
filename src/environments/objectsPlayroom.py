@@ -16,18 +16,18 @@ class ObjectsPlayroom(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
     def __init__(self, seed=None, nbObjects=2):
-        # Object state = (agent_pos_abs, obj_pos_rel, shape, color)
-        self.nbFeatures = 4
+        # Object state = (obj_pos_abs, shape, color)
+        self.nbFeatures = 3
         self.nbObjects = nbObjects
-        self.nbActions = 6
+        self.nbActions = 2
         self.lastaction = None
         self.objects = []
         rng = np.random.RandomState(seed)
         for i in range(self.nbObjects):
-            self.objects.append(Obj(self, init_state=np.array([0,
-                                                               rng.uniform(-1, 1),
+            self.objects.append(Obj(self, init_state=np.array([rng.uniform(-1, 1),
                                                                0,
-                                                               rng.uniform(-1, 1)])))
+                                                               rng.uniform(-1, 1)
+                                                               ])))
 
 
     def step(self, a):
@@ -46,29 +46,19 @@ class ObjectsPlayroom(Env):
 
     def next_state(self, state, a):
         if a == 0:
-            state[0] = state[1]
-            # state[1] = 0
-        elif state[1] == state[0]:
-            if a == 1:
-                obj_pos_abs = np.clip(state[0] + 0.05, -1, 1)
-                state[1] = obj_pos_abs
-            if a == 2:
-                if state[2] == 0:
-                    obj_pos_abs = np.clip(state[0] + 0.05, -1, 1)
-                    state[1] = obj_pos_abs
-                elif state[2] == 1:
-                    obj_pos_abs = np.clip(state[0] + 0.5, -1, 1)
-                    state[1] = obj_pos_abs
-            if a == 3:
-                obj_pos_abs = np.clip(state[0] - 0.05, -1, 1)
-                state[1] = obj_pos_abs
-            if a == 4:
-                if state[2] == 0:
-                    obj_pos_abs = np.clip(state[0] - 0.05, -1, 1)
-                    state[1] = obj_pos_abs
-                elif state[2] == 1:
-                    obj_pos_abs = np.clip(state[0] - 0.5, -1, 1)
-                    state[1] = obj_pos_abs
+            state[0] = np.clip(state[0] + 0.1, -1, 1)
+        # if a == 1:
+        #     if state[1] == 0:
+        #         state[0] = np.clip(state[0] + 0.01, -1, 1)
+        #     elif state[1] == 1:
+        #         state[0] = np.clip(state[0] + 0.05, -1, 1)
+        if a == 1:
+            state[0] = np.clip(state[0] - 0.1, -1, 1)
+        # if a == 3:
+        #     if state[1] == 0:
+        #         state[0] = np.clip(state[0] - 0.01, -1, 1)
+        #     elif state[1] == 1:
+        #         state[0] = np.clip(state[0] - 0.05, -1, 1)
         return state
 
 
