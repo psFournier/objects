@@ -103,11 +103,10 @@ class Agent(object):
             self.env_step += self.env_steps
             self.memorize_her(object, transitions)
 
-            for evaluator in self.evaluators:
-                _ = evaluator.get_reward()
-
             # self.object_selector.update_weights(object, reward)
 
             if ep % self.log_freq == 0:
+                for evaluator in self.evaluators:
+                    _ = evaluator.get_reward()
                 self.log()
 

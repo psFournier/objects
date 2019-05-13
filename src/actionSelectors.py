@@ -6,7 +6,7 @@ class Random_action_selector(object):
         self.nbActions = agent.env.nbActions
 
     def select(self, state, goal):
-        return np.random.choice(self.nbActions), np.ones(self.nbActions)/self.nbActions
+        return np.random.choice(self.nbActions), None, np.ones(self.nbActions)/self.nbActions
 
 class State_goal_max_action_selector(object):
     def __init__(self, agent):
@@ -25,7 +25,7 @@ class State_goal_max_action_selector(object):
         action = np.argmax(qvals)
         probs[action] = 1
         self.stat_steps += 1
-        return action, probs
+        return action, qvals, probs
 
     @property
     def stats(self):
@@ -55,7 +55,7 @@ class State_goal_soft_action_selector(object):
         self.max_max_prob += sorted_probs[-1] - sorted_probs[-2]
         action = np.random.choice(len(probs), p=probs)
         self.stat_steps += 1
-        return action, probs
+        return action, qvals, probs
 
     @property
     def stats(self):

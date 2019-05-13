@@ -47,7 +47,7 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --episodes VAL     [default: 4000]
+  --episodes VAL     [default: 1000]
   --rndepisodes VAL     [default: 200]
   --seed SEED              Random seed
   --experts VAL            [default: uni]

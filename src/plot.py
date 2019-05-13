@@ -71,7 +71,7 @@ df1 = df1[(df1['--dropout'] == 0.5)]
 df1.fillna(method='ffill', inplace=True)
 
 # df1 = df1[(df1['--objectselector'] == 'rndobject')]
-y = ['test_ep_eval_reward', 'train_ep_eval_reward', 'player_reward', 'dqn_model_qval']
+y = ['test_ep_eval_reward', 'train_ep_eval_reward', 'player_reward', 'dqn_model_tderror']
 x = ['trainstep']
 
 paramsStudied = []
