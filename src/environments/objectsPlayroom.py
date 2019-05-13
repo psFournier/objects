@@ -7,10 +7,15 @@ from sklearn import svm
 from scipy.stats import norm
 
 class Obj():
-    def __init__(self, env, init_state):
+    def __init__(self, env):
         self.env = env
-        self.init_state = init_state
-        self.state = np.zeros_like(init_state)
+        self.color = np.random.uniform(-1, 1)
+
+    def reset(self):
+        self.state = np.array([np.random.uniform(-1, 1),
+                               0,
+                               self.color
+                               ])
 
 class ObjectsPlayroom(Env):
     metadata = {'render.modes': ['human', 'ansi']}
@@ -22,12 +27,8 @@ class ObjectsPlayroom(Env):
         self.nbActions = 2
         self.lastaction = None
         self.objects = []
-        rng = np.random.RandomState(seed)
         for i in range(self.nbObjects):
-            self.objects.append(Obj(self, init_state=np.array([rng.uniform(-1, 1),
-                                                               0,
-                                                               rng.uniform(-1, 1)
-                                                               ])))
+            self.objects.append(Obj(self))
 
 
     def step(self, a):
@@ -96,8 +97,8 @@ class ObjectsPlayroom(Env):
     #     return state
 
     def reset(self):
-        for i, object in enumerate(self.objects):
-            object.state = object.init_state.copy()
+        for object in self.objects:
+            object.reset()
         self.lastaction = None
         return self.state
 
