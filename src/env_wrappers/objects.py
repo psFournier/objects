@@ -19,9 +19,11 @@ class Objects(Wrapper):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        diff = s.reshape(-1, self.env.nbFeatures)[:,0:1] - g.reshape(-1, 1)
+        s = s.reshape(-1, self.env.nbFeatures)[:,0:2]
+        g = g.reshape(-1, self.goal_dim)
+        diff = s - g
         d = np.linalg.norm(diff, axis=-1)
-        t = (d < 0.05)
+        t = (d < 0.01)
         r = t * self.rTerm + (1 - t) * self.rNotTerm
         return r, t
 
@@ -106,7 +108,7 @@ class Objects(Wrapper):
 
     @property
     def goal_dim(self):
-        return 1
+        return 2
 
     @property
     def action_dim(self):

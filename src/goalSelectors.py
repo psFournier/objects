@@ -7,10 +7,24 @@ class Uniform_goal_selector(object):
 
     def select(self, object):
         while True:
-            goal = np.random.uniform(-1, 1, 1)
+            goal = 0.01 * np.random.randint(-5, 5, self.agent.wrapper.goal_dim)
             state = self.agent.wrapper.get_state(object, self.agent.env.state)
             if not self.agent.wrapper.get_r(state, goal)[1]:
                 break
+        return goal
+
+    @property
+    def stats(self):
+        d = {}
+        return d
+
+class Constant_goal_selector(object):
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'constant_goal'
+
+    def select(self, object):
+        goal = np.array([0.02,0.02])
         return goal
 
     @property
@@ -43,7 +57,7 @@ class Buffer_goal_selector(object):
         state = self.agent.wrapper.get_state(object, self.agent.env.state)
         while True and attempts < 100:
             rnd_exp_from_object = self.agent.buffer.sample(1, object)
-            goal = rnd_exp_from_object[0]['s1'][0:1]
+            goal = rnd_exp_from_object[0]['s1'][0:2]
             attempts += 1
             if self.agent.wrapper.get_r(state, goal)[0] == self.agent.wrapper.rNotTerm:
                 break

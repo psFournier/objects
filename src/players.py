@@ -39,6 +39,7 @@ class Player(object):
                     tderror += (lastqval - rs[0] - self.agent.model._gamma * max(qvals))**2
                 lastqval = qvals[action]
                 if ts[0]:
+                    print('reward')
                     self.agent.env.reset()
                     goal = goal_selector.select(object)
                     episodes += 1

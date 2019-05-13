@@ -9,12 +9,16 @@ from scipy.stats import norm
 class Obj():
     def __init__(self, env):
         self.env = env
-        self.color = np.random.uniform(-1, 1)
+        self.f1 = np.random.uniform(-0.1, 0.1)
+        # self.f2 = np.random.uniform(-1, 1)
+        self.reset()
+
 
     def reset(self):
-        self.state = np.array([np.random.uniform(-1, 1),
-                               0,
-                               self.color
+        self.state = np.array([0.,
+                               0.,
+                               self.f1,
+                               # self.f2
                                ])
 
 class ObjectsPlayroom(Env):
@@ -24,7 +28,7 @@ class ObjectsPlayroom(Env):
         # Object state = (obj_pos_abs, shape, color)
         self.nbFeatures = 3
         self.nbObjects = nbObjects
-        self.nbActions = 2
+        self.nbActions = 4
         self.lastaction = None
         self.objects = []
         for i in range(self.nbObjects):
@@ -47,14 +51,18 @@ class ObjectsPlayroom(Env):
 
     def next_state(self, state, a):
         if a == 0:
-            state[0] = np.clip(state[0] + 0.1, -1, 1)
+            state[0] = np.clip(state[0] + 0.005, -0.05, 0.1)
         # if a == 1:
         #     if state[1] == 0:
         #         state[0] = np.clip(state[0] + 0.01, -1, 1)
         #     elif state[1] == 1:
         #         state[0] = np.clip(state[0] + 0.05, -1, 1)
         if a == 1:
-            state[0] = np.clip(state[0] - 0.1, -1, 1)
+            state[0] = np.clip(state[0] - 0.005, -0.05, 0.1)
+        if a == 2:
+            state[1] = np.clip(state[1] + 0.005, -0.05, 0.1)
+        if a == 3:
+            state[1] = np.clip(state[1] - 0.005, -0.05, 0.1)
         # if a == 3:
         #     if state[1] == 0:
         #         state[0] = np.clip(state[0] - 0.01, -1, 1)

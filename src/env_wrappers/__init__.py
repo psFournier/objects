@@ -13,3 +13,9 @@ register(
     entry_point='gym.envs.classic_control:MountainCarEnv',
     wrapper_entry_point='env_wrappers.base:Base'
 )
+
+register(
+    id='CartPole-v0',
+    entry_point='gym.envs.classic_control:CartPoleEnv',
+    wrapper_entry_point='env_wrappers.base:Base'
+)

@@ -35,6 +35,39 @@ class State_goal_max_action_selector(object):
         self.stat_steps = 0
         return d
 
+class Epsilon_greedy_action_selector(object):
+    def __init__(self, agent):
+        self.agent = agent
+        self.min_max = 0
+        self.min_max_prob = 0
+        self.max_max_prob = 0
+        self.stat_steps = 0
+        self.name = 'sgmax_action'
+
+    def select(self, state, goal):
+        input = [np.expand_dims(state, axis=0), np.expand_dims(goal, axis=0)]
+        qvals = self.agent.model._qvals(input)[0].squeeze()
+        probs = np.zeros(qvals.shape)
+        self.min_max += max(qvals) - min(qvals)
+        eps = (1 - 0.9*min(1, self.agent.env_step/100000))
+        if np.random.rand() < eps:
+            # print(eps)
+            action = np.random.randint(self.agent.env.nbActions)
+        else:
+            action = np.argmax(qvals)
+        # print(state, goal, qvals)
+        probs[action] = 1
+        self.stat_steps += 1
+        return action, qvals, probs
+
+    @property
+    def stats(self):
+        d = {'min_max': self.min_max / self.stat_steps}
+        self.min_max = 0
+        self.min_max_prob = 0
+        self.stat_steps = 0
+        return d
+
 class State_goal_soft_action_selector(object):
     def __init__(self, agent):
         self.agent = agent
@@ -48,8 +81,8 @@ class State_goal_soft_action_selector(object):
         input = [np.expand_dims(state, axis=0), np.expand_dims(goal, axis=0)]
         qvals = self.agent.model._qvals(input)[0].squeeze()
         self.min_max += max(qvals) - min(qvals)
-        probs = softmax(qvals, theta=1 + 5 * min(self.agent.env_step/20000, 1))
-        # print(state, goal, probs)
+        probs = softmax(qvals, theta=1 + 10*min(1, self.agent.env_step/50000))
+        print(state, goal, probs)
         sorted_probs = np.sort(probs)
         self.min_max_prob += sorted_probs[-1] - sorted_probs[0]
         self.max_max_prob += sorted_probs[-1] - sorted_probs[-2]

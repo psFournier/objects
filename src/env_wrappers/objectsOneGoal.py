@@ -19,10 +19,13 @@ class ObjectsOneGoal(Wrapper):
         self.env.step(pairObjAction)
 
     def get_r(self, s, g):
-        diff = (s).reshape(-1, self.env.nbFeatures)
-        d = np.linalg.norm(diff[:, 1:2], axis=-1)
-        r = (d < 0.05) * self.rTerm + (1 - (d < 0.05)) * self.rNotTerm
-        return r, np.zeros_like(r)
+        s = s.reshape(-1, self.env.nbFeatures)[:, 0:2]
+        g = np.array([0.1, -0.1]).reshape(-1, 2)
+        diff = s - g
+        d = np.linalg.norm(diff, axis=-1)
+        t = (d < 0.01)
+        r = (1 - t) * self.rNotTerm + min(1,0.01/d)
+        return r, t
 
     # def reset(self, state):
     #     exp = {}

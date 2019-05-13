@@ -14,7 +14,8 @@ class Test_episode_evaluator(object):
 
     def get_reward(self):
         eval = 0
-        for object in range(self.agent.object_selector.K, self.agent.env.nbObjects):
+        for _ in range(10):
+            object = np.random.randint(self.agent.object_selector.K, self.agent.env.nbObjects)
             _, r = self.player.play(object, self.agent.goal_selector, self.action_selector)
             eval += r
         if self.agent.object_selector.K < self.agent.env.nbObjects:
@@ -41,7 +42,8 @@ class Train_episode_evaluator(object):
 
     def get_reward(self):
         eval = 0
-        for object in range(0, self.agent.object_selector.K):
+        for _ in range(10):
+            object = np.random.randint(self.agent.object_selector.K)
             _, r = self.player.play(object, self.agent.goal_selector, self.action_selector)
             eval += r
         eval /= self.agent.object_selector.K

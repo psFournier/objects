@@ -57,10 +57,10 @@ params = [
 df1 = df.copy()
 # df1 = df1[(df1['--env'] == 'ObjectsPlayroom')]
 df1 = df1[(df1['--nstep'] == 1)]
-df1 = df1[(df1['--dropout'] == 0.5)]
-# df1 = df1[(df1['--l2reg'] == 0)]
-# df1 = df1[(df1['--seed'] == 13)]
-# df1 = df1[(df1['--nbObjectsTrain'] == 9)]
+# df1 = df1[(df1['--dropout'] == 0.5)]
+df1 = df1[(df1['--l2reg'] == 0)]
+# df1 = df1[(df1['--seed'] == 10)]
+df1 = df1[(df1['--nbObjectsTrain'] == 1)]
 # df1 = df1[(df1['--exp4gamma'] == 0.01)]
 # df1 = df1[(df1['--exp4beta'] == 100)]
 # df1 = df1[(df1['--exp4eta'] == 0.01)]
@@ -71,7 +71,7 @@ df1 = df1[(df1['--dropout'] == 0.5)]
 df1.fillna(method='ffill', inplace=True)
 
 # df1 = df1[(df1['--objectselector'] == 'rndobject')]
-y = ['test_ep_eval_reward', 'train_ep_eval_reward', 'player_reward', 'dqn_model_tderror']
+y = ['test_ep_eval_reward', 'train_ep_eval_reward', 'train_ep_eval_tderror', 'test_ep_eval_tderror']
 x = ['trainstep']
 
 paramsStudied = []
@@ -83,7 +83,7 @@ for param in params:
 print(df1['num_run'].unique())
 
 op_dict = {a:[np.median, np.mean, np.std, quant_inf, quant_sup] for a in y}
-avg = 1
+avg = 0
 if avg:
     df1 = df1.groupby(x + params).agg(op_dict).reset_index()
 
@@ -106,15 +106,15 @@ for j, (name, g) in enumerate(df1.groupby(p)):
     for i, valy in enumerate(y):
         xplot, yplot = i % a, i // a
         # print(g[valy])
-        # ax2[xplot,yplot].plot(g['trainstep'], g[valy].rolling(5).mean(), label=valy, c=cm.hot(i/18))
-        ax2[xplot,yplot].plot(g['trainstep'], g[valy]['median'].rolling(1).mean(), label=name, c=colors[j])
-        ax2[xplot,yplot].fill_between(g['trainstep'],
-                                g[valy]['quant_inf'].rolling(1).mean(),
-                                g[valy]['quant_sup'].rolling(1).mean(), alpha=0.25, linewidth=0, color=colors[j])
+        ax2[xplot,yplot].plot(g['trainstep'], g[valy].rolling(5).mean(), label=valy, c=cm.hot(i/18))
+        # ax2[xplot,yplot].plot(g['trainstep'], g[valy]['median'].rolling(5).mean(), label=name, c=colors[j])
+        # ax2[xplot,yplot].fill_between(g['trainstep'],
+        #                         g[valy]['quant_inf'].rolling(5).mean(),
+        #                         g[valy]['quant_sup'].rolling(5).mean(), alpha=0.25, linewidth=0, color=colors[j])
         # ax2[i % a, i // a].scatter(g['train_step'], g[valy], s=1)
         ax2[xplot, yplot].set_title(label=valy)
         # if i == 0: ax2[xplot, yplot].legend()
-        ax2[xplot, yplot].set_xlim([0, 100000])
+        ax2[xplot, yplot].set_xlim([0, 30000])
         # ax2[xplot, yplot].set_ylim([0, 0.01])
     ax2[xplot,yplot].legend()
 

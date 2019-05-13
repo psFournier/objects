@@ -191,11 +191,13 @@ class Controller(object):
 
     @property
     def stats(self):
-        d = {'qval':self.qval / self.stat_steps,
-                'tderror': self.tderror / self.stat_steps,
-                'target': self.target / self.stat_steps,
-                'reward': self.reward / self.stat_steps,
-                'rho': self.rho / self.stat_steps}
+        d = {}
+        if self.stat_steps != 0:
+            d = {'qval':self.qval / self.stat_steps,
+                    'tderror': self.tderror / self.stat_steps,
+                    'target': self.target / self.stat_steps,
+                    'reward': self.reward / self.stat_steps,
+                    'rho': self.rho / self.stat_steps}
         self.stat_steps = 0
         self.qval = 0
         self.tderror = 0

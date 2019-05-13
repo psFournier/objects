@@ -8,8 +8,8 @@ from logger import Logger, build_logger
 from evaluators import Qval_evaluator, TDerror_evaluator, ApproxError_buffer_evaluator, \
     ApproxError_global_evaluator, ApproxError_objects_evaluator, ApproxError_changes_evaluator
 # from objectSelectors import EXP4, RandomObjectSelector, EXP4SSP
-from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_selector
-from actionSelectors import Random_action_selector, State_goal_soft_action_selector, State_action_selector
+from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_selector,Constant_goal_selector
+from actionSelectors import Random_action_selector, State_goal_soft_action_selector, State_action_selector, Epsilon_greedy_action_selector
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
@@ -26,7 +26,7 @@ Usage:
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
   --initq VAL              [default: -100]
-  --layers VAL             [default: 32]
+  --layers VAL             [default: 32,32]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
@@ -34,10 +34,6 @@ Options:
   --targetClip VAL         [default: 0]
   --lambda VAL             [default: 0]
   --nbObjects VAL          [default: 1]
-  --nbFeatures VAL         [default: 3]
-  --nbActions VAL          [default: 10]
-  --density VAL            [default: 0.1]
-  --amplitude VAL            [default: 0.1]
   --evaluator VAL          [default: approxglobal]
   --objects VAL     [default: rndobject]
   --exp4gamma VAL          [default: 0.1]
@@ -47,9 +43,9 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --episodes VAL     [default: 1000]
+  --episodes VAL     [default: 10000]
   --rndepisodes VAL     [default: 200]
-  --seed SEED              Random seed
+  --seed SEED              [default: 1]
   --experts VAL            [default: uni]
   --nbObjectsTrain VAL     [default: 1]
   
@@ -99,12 +95,14 @@ if __name__ == '__main__':
     goal_selectors = {
         'buffer': Buffer_goal_selector,
         'uniform': Uniform_goal_selector,
-        'no': No_goal_selector
+        'no': No_goal_selector,
+        'constant': Constant_goal_selector
     }
     action_selectors = {
         'rnd': Random_action_selector,
         'sgsoft': State_goal_soft_action_selector,
-        's': State_action_selector
+        's': State_action_selector,
+        'eg': Epsilon_greedy_action_selector
     }
     # Careful with the exploration in the action selector
     evaluators = [Test_episode_evaluator(agent), Train_episode_evaluator(agent)]
