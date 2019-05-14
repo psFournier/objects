@@ -25,7 +25,7 @@ class Agent(object):
         self.train_steps = 50
         self.random_play_episodes = int(args['--rndepisodes'])
         self.episodes = int(args['--episodes'])
-        self.log_freq = 5
+        self.log_freq = 10
         self.her = int(args['--her'])
 
     def log(self):
@@ -58,7 +58,8 @@ class Agent(object):
             for j, idx in enumerate(her_goals_idx):
                 if idx >= i:
                     tr_her = tr.copy()
-                    tr_her['g'] = on_policy_transitions[idx]['s1'][0:2]
+                    tr_her['g'] = on_policy_transitions[idx]['s1'][self.wrapper.goal_idxs]
+
                     self.buffer.append(tr_her)
 
     def memorize(self, object, transitions):

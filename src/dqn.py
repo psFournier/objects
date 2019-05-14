@@ -1,5 +1,5 @@
 from keras.models import Model
-from keras.initializers import RandomUniform, TruncatedNormal
+from keras.initializers import RandomUniform, lecun_uniform, he_normal
 from keras.regularizers import l2
 from keras.layers import Dense, Input, Lambda, Reshape, Dropout
 from keras.optimizers import Adam
@@ -7,6 +7,7 @@ import keras.backend as K
 from keras.layers.merge import concatenate, multiply, add, subtract, maximum, Dot
 import numpy as np
 from utils import softmax, merge_two_dicts
+import tensorflow as tf
 
 class Controller(object):
     def __init__(self, wrapper, nstep, _gamma, _lambda, IS, layers, dropout, l2reg):
@@ -24,9 +25,10 @@ class Controller(object):
         qvals = self.create_network(S, G, wrapper.action_dim, dropout, l2reg)
         actionFilter = K.squeeze(K.one_hot(A, wrapper.action_dim), axis=1)
         qval = K.sum(actionFilter * qvals, axis=1, keepdims=True)
+        # loss = tf.losses.huber_loss(labels=targets, predictions=qval)
         td_errors = qval - targets
         l2_loss = K.square(td_errors)
-        loss = K.mean(l2_loss)
+        loss = K.mean(l2_loss, axis=0)
 
         self.model = Model([S, G], qvals)
         updates = Adam(lr=0.001).get_updates(loss, self.model.trainable_weights)
@@ -51,24 +53,19 @@ class Controller(object):
         weights = self.model.get_weights()
         target_weights = self.targetmodel.get_weights()
         for i in range(len(weights)):
-            target_weights[i] = 0.01 * weights[i] + 0.99 * target_weights[i]
+            target_weights[i] = 0.001 * weights[i] + 0.999 * target_weights[i]
         self.targetmodel.set_weights(target_weights)
 
     def create_network(self, S, G, num_A, dropout, l2reg):
         h = concatenate([S, G])
         for l in self.layers:
-            Dense(l,
-                  activation="relu",
-                  kernel_initializer=TruncatedNormal(),
-                  bias_initializer=TruncatedNormal(),
-                  kernel_regularizer=l2(l2reg),
-                  )(h)
-            h = Dropout(rate=dropout)(h)
+            h = Dense(l,
+                      activation="relu",
+                      kernel_initializer=he_normal()
+                      )(h)
         Q_values = Dense(num_A,
                          activation='linear',
-                         kernel_initializer=TruncatedNormal(),
-                         bias_initializer=TruncatedNormal(),
-                         kernel_regularizer=l2(l2reg),
+                         kernel_initializer=RandomUniform(minval=-3e-4, maxval=3e-4)
                          )(h)
         return Q_values
 

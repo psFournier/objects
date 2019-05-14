@@ -2,7 +2,7 @@ import glob
 import pandas as pd
 import os
 
-DIR = '../log/cluster/1305/'
+DIR = '../log/cluster/1405bis/'
 ENV = '*'
 runs = glob.glob(os.path.join(DIR, ENV, '*'))
 frames = []

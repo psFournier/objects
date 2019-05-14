@@ -7,7 +7,9 @@ class Uniform_goal_selector(object):
 
     def select(self, object):
         while True:
-            goal = 0.01 * np.random.randint(-5, 5, self.agent.wrapper.goal_dim)
+            goal = np.random.uniform(self.agent.wrapper.goal_space[0, 0],
+                                     self.agent.wrapper.goal_space[0, 1],
+                                     self.agent.wrapper.goal_dim)
             state = self.agent.wrapper.get_state(object, self.agent.env.state)
             if not self.agent.wrapper.get_r(state, goal)[1]:
                 break
@@ -24,7 +26,7 @@ class Constant_goal_selector(object):
         self.name = 'constant_goal'
 
     def select(self, object):
-        goal = np.array([0.02,0.02])
+        goal = np.array([0.5])
         return goal
 
     @property

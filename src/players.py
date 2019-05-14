@@ -8,9 +8,10 @@ class Player(object):
 
     def play(self, object, goal_selector, action_selector):
         goal = goal_selector.select(object)
+        # print(self.name, goal)
         transitions = [[] for o in range(self.agent.env.nbObjects)]
-        r = 0
-        tderror = 0
+        r = 0.
+        tderror = 0.
         lastqval = None
         self.agent.env.reset()
         episodes = 1
@@ -18,6 +19,7 @@ class Player(object):
             fullstate0 = self.agent.env.state
             states0 = [self.agent.wrapper.get_state(o, fullstate0) for o in range(self.agent.env.nbObjects)]
             state0 = states0[object]
+            # print(self.name, state0)
             action, qvals, probs = action_selector.select(state0, goal)
             mu0 = probs[action]
             self.agent.env.step(action)
@@ -34,6 +36,7 @@ class Player(object):
                 transitions[o].append(transition)
             if goal.size == self.agent.wrapper.goal_dim:
                 rs, ts = self.agent.wrapper.get_r(states1[object], goal)
+                # print(self.name, rs, ts)
                 r += rs[0]
                 if lastqval is not None:
                     tderror += (lastqval - rs[0] - self.agent.model._gamma * max(qvals))**2
@@ -42,6 +45,7 @@ class Player(object):
                     print('reward')
                     self.agent.env.reset()
                     goal = goal_selector.select(object)
+                    # print(self.name, goal)
                     episodes += 1
         self.reward += r
         self.tderror += tderror

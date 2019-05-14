@@ -10,8 +10,8 @@ from env_wrappers.registration import register
 
 register(
     id='MountainCar-v0',
-    entry_point='gym.envs.classic_control:MountainCarEnv',
-    wrapper_entry_point='env_wrappers.base:Base'
+    entry_point='environments.mountainCar:MountainCarEnv',
+    wrapper_entry_point='env_wrappers.mountaincar:MountainCar'
 )
 
 register(
@@ -19,3 +19,10 @@ register(
     entry_point='gym.envs.classic_control:CartPoleEnv',
     wrapper_entry_point='env_wrappers.base:Base'
 )
+
+register(
+        id='Objects-v0',
+        entry_point='environments:ObjectsPlayroom',
+        kwargs={'nbObjects': 10},
+        wrapper_entry_point='env_wrappers.objects:Objects'
+    )

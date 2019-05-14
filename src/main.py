@@ -25,7 +25,7 @@ Usage:
 
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
-  --initq VAL              [default: -100]
+  --initq VAL              [default: 0]
   --layers VAL             [default: 32,32]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
@@ -43,7 +43,7 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --episodes VAL     [default: 10000]
+  --episodes VAL     [default: 1000]
   --rndepisodes VAL     [default: 200]
   --seed SEED              [default: 1]
   --experts VAL            [default: uni]
@@ -60,20 +60,7 @@ if __name__ == '__main__':
     loggerStdoutJSON = Logger(dir=log_dir,
                               format_strs=['json', 'stdout'])
 
-    register(
-        id='Objects-v0',
-        entry_point='environments:'+args['--env'],
-        kwargs={'seed': int(args['--seed']),
-                'nbObjects': int(args['--nbObjects']),
-                # 'nbFeatures': int(args['--nbFeatures']),
-                # 'nbActions': int(args['--nbActions']),
-                # 'density': float(args['--density']),
-                # 'amplitude': float(args['--amplitude'])
-                },
-        wrapper_entry_point='env_wrappers.objects:Objects'
-    )
-
-    env, wrapper = make('Objects-v0', args)
+    env, wrapper = make(args['--env'], args)
     model = Controller(wrapper,
                        nstep=1,
                        _gamma=0.99,
@@ -105,7 +92,10 @@ if __name__ == '__main__':
         'eg': Epsilon_greedy_action_selector
     }
     # Careful with the exploration in the action selector
-    evaluators = [Test_episode_evaluator(agent), Train_episode_evaluator(agent)]
+    evaluators = [
+        Test_episode_evaluator(agent),
+        Train_episode_evaluator(agent)
+    ]
     # agent.object_selector = EXP4(experts=experts,
     #                              K=env.nbObjects,
     #                              gamma=float(args['--exp4gamma']),
