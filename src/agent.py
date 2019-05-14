@@ -72,11 +72,13 @@ class Agent(object):
             self.buffer.append(tr)
 
     def train(self, object):
-        if self.buffer._buffers[object]._numsamples > 100 * self.batch_size:
+        if self.buffer._buffers[object]._numsamples > self.batch_size:
             for _ in range(self.train_steps):
                 exps = self.buffer.sample(self.batch_size, object)
                 self.model.train(exps)
                 self.train_step += 1
+        else:
+            print('not enough samples for batchsize')
 
     def learn(self):
 
@@ -93,7 +95,8 @@ class Agent(object):
 
             object = self.object_selector.select()
 
-            self.train(object)
+            if self.env_step > 10000:
+                self.train(object)
             transitions,_ = self.player.play(object, self.goal_selector, self.action_selector)
             # print(self.player.reward)
             self.env_step += self.env_steps

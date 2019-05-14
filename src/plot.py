@@ -5,12 +5,12 @@ import brewer2mpl
 import matplotlib.cm as cm
 
 # dirs = ['0201', '0401', '0301', '0601', '0701', '0801', '0901', '1101', '1201', '1301', '1401']
-df = pd.concat([pd.read_pickle('../log/cluster/1405bis/*.pkl')], ignore_index=True)
+df = pd.concat([pd.read_pickle('../log/cluster/1405/*.pkl')], ignore_index=True)
 
 def quant_inf(x):
-    return x.quantile(0.25)
+    return x.quantile(0.1)
 def quant_sup(x):
-    return x.quantile(0.75)
+    return x.quantile(0.9)
 
 bmap = brewer2mpl.get_map('set1', 'qualitative', 9)
 colors = bmap.mpl_colors
@@ -48,7 +48,7 @@ params = [
           '--actions',
     '--dropout',
     '--l2reg',
-    '--episodes',
+    # '--episodes',
     # '--seed',
     '--experts',
     '--nbObjectsTrain'
@@ -71,8 +71,8 @@ df1 = df1[(df1['--l2reg'] == 0)]
 df1.fillna(method='ffill', inplace=True)
 
 # df1 = df1[(df1['--objectselector'] == 'rndobject')]
-y = ['player_reward', 'dqn_model_reward']
-x = ['trainstep']
+y = ['train_ep_eval_reward', 'test_ep_eval_reward', 'trainstep']
+x = ['envstep']
 
 paramsStudied = []
 for param in params:
@@ -88,9 +88,9 @@ if avg:
     df1 = df1.groupby(x + params).agg(op_dict).reset_index()
 
 print(paramsStudied)
-a, b = 2,2
+a, b = 2,1
 
-fig2, ax2 = plt.subplots(a, b, figsize=(18,10), squeeze=False, sharey=False, sharex=False)
+fig2, ax2 = plt.subplots(a, b, figsize=(18,10), squeeze=False, sharey=True, sharex=True)
 p = 'num_run'
 if avg:
     p = paramsStudied
@@ -103,18 +103,19 @@ for j, (name, g) in enumerate(df1.groupby(p)):
         else:
             label = '{}:{}'.format(paramsStudied[0][2:], name)
 
-    for i, valy in enumerate(y):
+    for i, valy in enumerate(y[:-1]):
         xplot, yplot = i % a, i // a
         # print(g[valy])
-        # ax2[xplot,yplot].plot(g['trainstep'], g[valy].rolling(5).mean(), label=valy, c=cm.hot(i/18))
-        ax2[xplot,yplot].plot(g['trainstep'], g[valy]['median'].rolling(5).mean(), label=name, c=colors[j])
-        ax2[xplot,yplot].fill_between(g['trainstep'],
-                                g[valy]['quant_inf'].rolling(5).mean(),
-                                g[valy]['quant_sup'].rolling(5).mean(), alpha=0.25, linewidth=0, color=colors[j])
+        # print(g['trainstep'])
+        # ax2[xplot,yplot].plot(g['trainstep'], g[valy], label=valy, c=cm.hot(i/18))
+        ax2[xplot,yplot].plot(g['trainstep']['mean'], g[valy]['median'], label=name, c=colors[j])
+        ax2[xplot,yplot].fill_between(g['trainstep']['mean'],
+                                g[valy]['quant_inf'],
+                                g[valy]['quant_sup'], alpha=0.25, linewidth=0, color=colors[j])
         # ax2[i % a, i // a].scatter(g['train_step'], g[valy], s=1)
         ax2[xplot, yplot].set_title(label=valy)
         # if i == 0: ax2[xplot, yplot].legend()
-        # ax2[xplot, yplot].set_xlim([0, 30000])
+        ax2[xplot, yplot].set_xlim([0, 25000])
         # ax2[xplot, yplot].set_ylim([0, 0.01])
     ax2[xplot,yplot].legend()
 
