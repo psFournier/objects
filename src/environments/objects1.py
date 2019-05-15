@@ -21,7 +21,7 @@ class Obj():
                                self.f2
                                ])
 
-class ObjectsPlayroom(Env):
+class Objects1(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
     def __init__(self, seed=None, nbObjects=2):

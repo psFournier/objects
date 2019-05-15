@@ -108,6 +108,7 @@ class Agent(object):
             # self.object_selector.update_weights(object, reward)
 
             if ep % self.log_freq == 0 and ep > 0:
+                # print('EVAAAAAAAAAAAAAAL')
                 for evaluator in self.evaluators:
                     _ = evaluator.get_reward()
                 self.log()

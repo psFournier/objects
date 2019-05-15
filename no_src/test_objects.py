@@ -1,7 +1,7 @@
-from src.environments.objects import Objects
+from src.environments.objects2 import Objects
 from src.environments.objectsEasy import ObjectsEasy
 from src.environments.objectsForExp4 import ObjectsForExp4
-from src.environments.objectsPlayroom import ObjectsPlayroom
+from src.environments.objects1 import ObjectsPlayroom
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D

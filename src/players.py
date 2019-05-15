@@ -1,19 +1,19 @@
 class Player(object):
     def __init__(self, agent):
         self.agent = agent
-        self.reward = 0
-        self.tderror = 0
+        self.rewards = [0] * agent.env.nbObjects
+        self.tderrors = [0] * agent.env.nbObjects
         self.name = 'player'
-        self.stat_steps = 0
+        self.stat_steps = [0] * agent.env.nbObjects
 
     def play(self, object, goal_selector, action_selector):
+        self.agent.env.reset()
         goal = goal_selector.select(object)
         # print(self.name, goal)
         transitions = [[] for o in range(self.agent.env.nbObjects)]
         r = 0.
         tderror = 0.
         lastqval = None
-        self.agent.env.reset()
         episodes = 1
         for _ in range(self.agent.env_steps):
             fullstate0 = self.agent.env.state
@@ -45,18 +45,20 @@ class Player(object):
                     print('reward')
                     self.agent.env.reset()
                     goal = goal_selector.select(object)
-                    # print(self.name, goal)
                     episodes += 1
-        self.reward += r
-        self.tderror += tderror
-        self.stat_steps += episodes
+        self.rewards[object] += r
+        self.tderrors[object] += tderror
+        self.stat_steps[object] += episodes
         return transitions, r/episodes
 
     @property
     def stats(self):
-        d = {'reward': self.reward / self.stat_steps,
-             'tderror': self.tderror / (self.stat_steps * self.agent.env_steps)}
-        self.reward = 0
-        self.tderror = 0
-        self.stat_steps = 0
+        d = {}
+        for i, (r, tde, s) in enumerate(zip(self.rewards, self.tderrors, self.stat_steps)):
+            if s!=0:
+                d['reward_{}'.format(i)] = r / s
+                d['tderror_{}'.format(i)] = tde / (s * self.agent.env_steps)
+        self.rewards = [0] * self.agent.env.nbObjects
+        self.tderrors = [0] * self.agent.env.nbObjects
+        self.stat_steps = [0] * self.agent.env.nbObjects
         return d

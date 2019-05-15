@@ -21,8 +21,16 @@ register(
 )
 
 register(
-        id='Objects-v0',
-        entry_point='environments:ObjectsPlayroom',
+        id='Objects1-v0',
+        entry_point='environments.objects1:Objects1',
         kwargs={'nbObjects': 10},
-        wrapper_entry_point='env_wrappers.objects:Objects'
+        wrapper_entry_point='env_wrappers.objects1:Objects1'
+    )
+
+register(
+        id='Objects2-v0',
+        entry_point='environments.objects2:Objects2',
+        kwargs={'nbObjects': 10,
+                'seed': 1},
+        wrapper_entry_point='env_wrappers.objects2:Objects2'
     )

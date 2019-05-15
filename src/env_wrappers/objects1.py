@@ -1,9 +1,9 @@
 import numpy as np
 from gym import Wrapper
 
-class Objects(Wrapper):
+class Objects1(Wrapper):
     def __init__(self, env, args):
-        super(Objects, self).__init__(env)
+        super(Objects1, self).__init__(env)
         self.gamma = 0.99
         self.rNotTerm = -1 + (self.gamma - 1) * float(args['--initq'])
         self.rTerm = 0 - float(args['--initq'])

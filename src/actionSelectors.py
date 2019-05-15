@@ -23,6 +23,7 @@ class State_goal_max_action_selector(object):
         probs = np.zeros(qvals.shape)
         self.min_max += max(qvals) - min(qvals)
         action = np.argmax(qvals)
+        # print(state, goal)
         probs[action] = 1
         self.stat_steps += 1
         return action, qvals, probs
@@ -82,7 +83,7 @@ class State_goal_soft_action_selector(object):
         qvals = self.agent.model._qvals(input)[0].squeeze()
         self.min_max += max(qvals) - min(qvals)
         probs = softmax(qvals, theta=0.5 + 1.5*min(1, self.agent.train_step/20000))
-        # print(self.name, state, goal, probs)
+        # print(state, goal)
         sorted_probs = np.sort(probs)
         self.min_max_prob += sorted_probs[-1] - sorted_probs[0]
         self.max_max_prob += sorted_probs[-1] - sorted_probs[-2]
