@@ -6,7 +6,7 @@ class LP_expert(object):
     def __init__(self, agent, eta, beta, maxlen):
         self.agent = agent
         self.name = '_'.join(['lp', str(eta), str(beta), str(maxlen)]) + '_expert'
-        self.competence_queues = [deque([agent.env_steps * agent.wrapper.rNotTerm], maxlen=maxlen)
+        self.competence_queues = [deque([agent.ep_env_steps * agent.wrapper.rNotTerm], maxlen=maxlen)
                                   for _ in range(agent.env.nbObjects)]
         self.lps = np.zeros(agent.env.nbObjects)
         self.eta = eta

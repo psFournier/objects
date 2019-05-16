@@ -3,7 +3,7 @@ import numpy as np
 class Player(object):
     def __init__(self, agent):
         self.agent = agent
-        self.rewards = agent.env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects)
+        self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects)
         self.tderrors = np.zeros(agent.env.nbObjects)
         self.name = 'player'
         self.stat_steps = np.zeros(agent.env.nbObjects)
@@ -18,7 +18,7 @@ class Player(object):
         tderror = 0.
         lastqval = None
         episodes = 1
-        for _ in range(self.agent.env_steps):
+        for _ in range(self.agent.ep_env_steps):
             fullstate0 = self.agent.env.state
             states0 = [self.agent.wrapper.get_state(o, fullstate0) for o in range(self.agent.env.nbObjects)]
             state0 = states0[object]

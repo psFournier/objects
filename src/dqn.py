@@ -71,7 +71,7 @@ class Controller(object):
 
     def train(self, object):
         if self.agent.buffer._buffers[object]._numsamples > self.agent.batch_size:
-            for _ in range(self.agent.train_steps):
+            for _ in range(self.agent.ep_train_steps):
                 exps = self.agent.buffer.sample(self.agent.batch_size, object)
                 nStepExpes = self.getNStepSequences(exps)
                 nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
@@ -91,7 +91,7 @@ class Controller(object):
                     self.tderrors[object] += np.mean(td_errors)
                     self.qvals[object] += np.mean(qval)
                 self.stat_steps[object] += 1
-                self.agent.train_step += 1
+                self.agent.train_steps[object] += 1
         else:
             print('not enough samples for batchsize')
 

@@ -49,7 +49,7 @@ class Epsilon_greedy_action_selector(object):
         qvals = self.agent.model._qvals(input)[0].squeeze()
         probs = np.zeros(qvals.shape)
         self.min_max += max(qvals) - min(qvals)
-        eps = (1 - 0.9*min(1, self.agent.train_step/10000))
+        eps = (1 - 0.9*min(1, sum(self.agent.train_steps)/10000))
         if np.random.rand() < eps:
             # print(eps)
             action = np.random.randint(self.agent.env.nbActions)
@@ -80,7 +80,7 @@ class State_goal_soft_action_selector(object):
         input = [np.expand_dims(state, axis=0), np.expand_dims(goal, axis=0)]
         qvals = self.agent.model._qvals(input)[0].squeeze()
         self.min_max += max(qvals) - min(qvals)
-        probs = softmax(qvals, theta=0.5 + 1.5*min(1, self.agent.train_step/10000))
+        probs = softmax(qvals, theta=0.5 + 1.5*min(1, sum(self.agent.train_steps)/10000))
         # print(state, goal)
         sorted_probs = np.sort(probs)
         self.min_max_prob += sorted_probs[-1] - sorted_probs[0]
