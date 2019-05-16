@@ -58,10 +58,10 @@ class Agent(object):
                     tr['next'] = on_policy_transitions[i + 1]
                 self.buffer.append(tr)
             for j, idx in enumerate(her_goals_idx):
-                if idx >= i:
+                g = on_policy_transitions[idx]['s1'][self.wrapper.goal_idxs]
+                if idx >= i and g != on_policy_transitions[0]['s0'][self.wrapper.goal_idxs]:
                     tr_her = tr.copy()
-                    tr_her['g'] = on_policy_transitions[idx]['s1'][self.wrapper.goal_idxs]
-
+                    tr_her['g'] = g
                     self.buffer.append(tr_her)
 
     def memorize(self, object, transitions):
