@@ -10,20 +10,20 @@ from utils import softmax, merge_two_dicts
 import tensorflow as tf
 
 class Controller(object):
-    def __init__(self, wrapper, nstep, _gamma, _lambda, IS, layers, dropout, l2reg):
+    def __init__(self, agent, nstep, _gamma, _lambda, IS, layers, dropout, l2reg):
         self.nstep = nstep
         self._gamma = _gamma
         self._lambda = _lambda
         self.IS = IS
         self.layers = layers
-        self.wrapper = wrapper
+        self.agent = agent
         self.name = 'dqn_model'
 
-        S, G = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.goal_dim,))
+        S, G = Input(shape=(agent.wrapper.state_dim,)), Input(shape=(agent.wrapper.goal_dim,))
         A = Input(shape=(1,), dtype='uint8')
         targets = Input(shape=(1,))
-        qvals = self.create_network(S, G, wrapper.action_dim, dropout, l2reg)
-        actionFilter = K.squeeze(K.one_hot(A, wrapper.action_dim), axis=1)
+        qvals = self.create_network(S, G, agent.wrapper.action_dim, dropout, l2reg)
+        actionFilter = K.squeeze(K.one_hot(A, agent.wrapper.action_dim), axis=1)
         qval = K.sum(actionFilter * qvals, axis=1, keepdims=True)
         # loss = tf.losses.huber_loss(labels=targets, predictions=qval)
         td_errors = qval - targets
@@ -36,18 +36,18 @@ class Controller(object):
         self._qval = K.function(inputs=[S, G, A], outputs=[qval], updates=None)
         self._train = K.function([S, G, A, targets], [loss, qval, td_errors], updates)
 
-        S_target, G_target = Input(shape=(wrapper.state_dim,)), Input(shape=(wrapper.goal_dim,))
-        targetQvals = self.create_network(S_target, G_target, wrapper.action_dim, dropout, l2reg)
+        S_target, G_target = Input(shape=(agent.wrapper.state_dim,)), Input(shape=(agent.wrapper.goal_dim,))
+        targetQvals = self.create_network(S_target, G_target, agent.wrapper.action_dim, dropout, l2reg)
 
         self.targetmodel = Model([S_target, G_target], targetQvals)
         self._targetqvals = K.function(inputs=[S_target, G_target], outputs=[targetQvals], updates=None)
 
         self.rho = 0
-        self.target = 0
-        self.reward = 0
-        self.qval = 0
-        self.tderror = 0
-        self.stat_steps = 0
+        self.targets = np.zeros(agent.wrapper.env.nbObjects)
+        self.rewards = np.zeros(agent.wrapper.env.nbObjects)
+        self.qvals = np.zeros(agent.wrapper.env.nbObjects)
+        self.tderrors = np.zeros(agent.wrapper.env.nbObjects)
+        self.stat_steps = np.zeros(agent.wrapper.env.nbObjects)
 
     def target_train(self):
         weights = self.model.get_weights()
@@ -69,23 +69,31 @@ class Controller(object):
                          )(h)
         return Q_values
 
-    def train(self, exps):
-        inputs = self.get_inputs(exps)
-        loss, qval, td_errors = self._train(inputs)
-        self.target_train()
-        self.tderror += np.mean(td_errors)
-        self.qval += np.mean(qval)
-        self.stat_steps += 1
-
-    def get_inputs(self, exps):
-        nStepExpes = self.getNStepSequences(exps)
-        nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
-        states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
-        inputs = [states, actions, goals, targets]
-        self.rho += np.mean(rhos)
-        self.target += np.mean(targets)
-        self.reward += mean_reward
-        return inputs
+    def train(self, object):
+        if self.agent.buffer._buffers[object]._numsamples > self.agent.batch_size:
+            for _ in range(self.agent.train_steps):
+                exps = self.agent.buffer.sample(self.agent.batch_size, object)
+                nStepExpes = self.getNStepSequences(exps)
+                nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
+                states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
+                inputs = [states, actions, goals, targets]
+                loss, qval, td_errors = self._train(inputs)
+                self.target_train()
+                self.rho += np.mean(rhos)
+                if self.stat_steps[object] == 0:
+                    self.targets[object] = np.mean(targets)
+                    self.rewards[object] = mean_reward
+                    self.tderrors[object] = np.mean(td_errors)
+                    self.qvals[object] = np.mean(qval)
+                else:
+                    self.targets[object] += np.mean(targets)
+                    self.rewards[object] += mean_reward
+                    self.tderrors[object] += np.mean(td_errors)
+                    self.qvals[object] += np.mean(qval)
+                self.stat_steps[object] += 1
+                self.agent.train_step += 1
+        else:
+            print('not enough samples for batchsize')
 
     def getNStepSequences(self, exps):
         nStepSeqs = []
@@ -121,7 +129,7 @@ class Controller(object):
         states = np.vstack(states)
         goals = np.vstack(goals)
 
-        rewards, terminals = self.wrapper.get_r(states, goals)
+        rewards, terminals = self.agent.wrapper.get_r(states, goals)
         mean_reward = np.mean(rewards)
         qvals = self._qvals([states, goals])[0]
         target_qvals = self._targetqvals([states, goals])[0]
@@ -157,7 +165,7 @@ class Controller(object):
                 b = np.sum(np.multiply(exp1['pi'], exp1['tq']), keepdims=True)
                 b = exp0['reward'] + (1 - exp0['terminal']) * self._gamma * b
                 #TODO influence target clipping
-                b = np.clip(b, self.wrapper.rNotTerm / (1 - self._gamma), self.wrapper.rTerm)
+                b = np.clip(b, self.agent.wrapper.rNotTerm / (1 - self._gamma), self.agent.wrapper.rTerm)
                 tdErrors.append((b - exp0['q'][exp0['a0']]).squeeze())
 
                 ### Calcul des ratios variable selon la méthode
@@ -188,16 +196,22 @@ class Controller(object):
 
     def stats(self):
         d = {}
-        if self.stat_steps != 0:
-            d = {'qval':self.qval / self.stat_steps,
-                    'tderror': self.tderror / self.stat_steps,
-                    'target': self.target / self.stat_steps,
-                    'reward': self.reward / self.stat_steps,
-                    'rho': self.rho / self.stat_steps}
-        self.stat_steps = 0
-        self.qval = 0
-        self.tderror = 0
-        self.reward = 0
-        self.rho = 0
-        self.target = 0
+        steps = sum(self.stat_steps)
+        if sum(self.stat_steps) != 0:
+            d['reward'] = sum(self.rewards)/ steps
+            d['tderror'] = sum(self.tderrors) / steps
+            d['qval'] = sum(self.qvals) / steps
+            d['target'] = sum(self.targets) / steps
+            d['rho'] = self.rho / steps
+        for i, s in enumerate(self.stat_steps):
+            if s != 0:
+                self.rewards[i] /= s
+                self.tderrors[i] /= s
+                self.targets[i] /= s
+                self.qvals[i] /= s
+            self.stat_steps[i] = 0
+        d['rewards'] = self.rewards
+        d['tderrors'] = self.tderrors
+        d['qvals'] = self.qvals
+        d['targets'] = self.targets
         return d

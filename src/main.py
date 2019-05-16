@@ -61,7 +61,12 @@ if __name__ == '__main__':
                               format_strs=['json', 'stdout'])
 
     env, wrapper = make(args['--env'], args)
-    model = Controller(wrapper,
+
+    # model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]),
+    #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
+    agent = Agent(args, env, wrapper, [loggerTB, loggerStdoutJSON])
+
+    agent.model = Controller(agent,
                        nstep=1,
                        _gamma=0.99,
                        _lambda=0,
@@ -69,9 +74,6 @@ if __name__ == '__main__':
                        layers=np.array([int(l) for l in args['--layers'].split(',')]),
                        dropout=float(args['--dropout']),
                        l2reg=float(args['--l2reg']))
-    # model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]),
-    #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
-    agent = Agent(args, env, wrapper, model, [loggerTB, loggerStdoutJSON])
 
     # experts_dict = {
     #     'uni': Uniform_expert,

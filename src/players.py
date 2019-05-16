@@ -39,21 +39,15 @@ class Player(object):
                 transitions[o].append(transition)
             if goal.size == self.agent.wrapper.goal_dim:
                 rs, ts = self.agent.wrapper.get_r(states1[object], goal)
-                # print(self.name, rs, ts)
                 r += rs[0]
                 if lastqval is not None:
                     tderror += (lastqval - rs[0] - self.agent.model._gamma * max(qvals))**2
                 lastqval = qvals[action]
                 if ts[0]:
-                    # print('reward')
                     self.agent.env.reset()
                     goal = goal_selector.select(object)
                     episodes += 1
-        # if self.to_reinit[object]:
-        #     self.stat_steps[object] = 0
-        #     self.rewards[object] = 0
-        #     self.tderrors[object] = 0
-        #     self.to_reinit[object] = 0
+
         if self.stat_steps[object] == 0:
             self.rewards[object] = r
             self.tderrors[object] = tderror
@@ -62,9 +56,6 @@ class Player(object):
             self.tderrors[object] += tderror
         self.stat_steps[object] += episodes
 
-        # print(object, r, episodes)
-        # print('reward', self.rewards[0])
-        # print('ep', self.stat_steps[0])
         return transitions, r/episodes
 
     def stats(self):
@@ -73,7 +64,6 @@ class Player(object):
             if s !=0:
                 self.rewards[i] /= s
                 self.tderrors[i] /= s
-                # self.to_reinit[i] = 1
             self.stat_steps[i] = 0
         d['rewards'] = self.rewards
         d['tderrors'] = self.tderrors

@@ -4,10 +4,10 @@ from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_s
 from actionSelectors import Random_action_selector
 
 class Agent(object):
-    def __init__(self, args, env, wrapper, model, loggers):
+    def __init__(self, args, env, wrapper, loggers):
         self.env = env
         self.wrapper = wrapper
-        self.model = model
+        self.model = None
         self.buffer = ReplayBuffer(limit=int(1e5), N=self.env.nbObjects)
         self.goal_selector = None
         self.action_selector = None
@@ -98,7 +98,7 @@ class Agent(object):
             object = self.object_selector.select()
 
             if self.env_step > 10000:
-                self.train(object)
+                self.model.train(object)
             transitions, play_reward = self.player.play(object, self.goal_selector, self.action_selector)
             # print(self.player.reward)
             self.env_step += self.env_steps
