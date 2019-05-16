@@ -6,45 +6,33 @@ import time
 from sklearn import svm
 from scipy.stats import norm
 
-class Obj0():
-    def __init__(self, env):
+class Obj():
+    def __init__(self, env, init_val):
         self.env = env
+        self.init_val = init_val
         self.reset()
 
     def reset(self):
         self.state = np.array([0.,
                                0.,
-                               # 0.,
-                               np.random.uniform(-.05, .05),
                                0.,
-                               .01
+                               # np.random.uniform(-.05, .05),
+                               0.,
+                               self.init_val
                                ])
 
-class Obj1():
-    def __init__(self, env):
-        self.env = env
-        self.reset()
-
-    def reset(self):
-        self.state = np.array([0.,
-                               0.,
-                               np.random.uniform(-.05, .05),
-                               # 0.,
-                               0.,
-                               .02
-                               ])
-
-class Objects2(Env):
+class Objects3(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
     def __init__(self, seed=None):
         self.nbFeatures = 5
-        self.nbObjects = 20
         self.nbActions = 5
         self.lastaction = None
         rng = np.random.RandomState(seed)
         self.FFN = FeedForwardNetwork(2, [4], 1, rng, 1, 0.05)
-        self.objects = [Obj0(self) for _ in range(19)] + [Obj1(self)]
+        initvals = [0.,0.,0.,0.,0.,-0.01,-0.02,0.01,0.02]
+        self.nbObjects = len(initvals)
+        self.objects = [Obj(self, initval) for initval in initvals]
 
     def step(self, a):
 
@@ -77,7 +65,7 @@ class Objects2(Env):
             # else:
             #     state[3] = 0
 
-            state[3] = 0.01 * np.sign(state[1]) * 100 *state[4]
+            state[3] = 0.01 * np.sign(state[1]) * 100 * state[4]
         else:
             state[3] = 0
         state[2] = np.clip(state[2] + state[3], -0.05, 0.05)

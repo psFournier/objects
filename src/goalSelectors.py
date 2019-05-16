@@ -15,7 +15,6 @@ class Uniform_goal_selector(object):
                 break
         return goal
 
-    @property
     def stats(self):
         d = {}
         return d
@@ -29,7 +28,6 @@ class Constant_goal_selector(object):
         goal = np.array([0.5])
         return goal
 
-    @property
     def stats(self):
         d = {}
         return d
@@ -42,7 +40,6 @@ class No_goal_selector(object):
     def select(self, object):
         return np.array([])
 
-    @property
     def stats(self):
         d = {}
         return d
@@ -69,7 +66,6 @@ class Buffer_goal_selector(object):
         self.stat_steps += 1
         return goal
 
-    @property
     def stats(self):
         d = {'dist': self.dist_to_goal / self.stat_steps}
         self.stat_steps = 0

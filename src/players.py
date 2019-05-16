@@ -1,10 +1,13 @@
+import numpy as np
+
 class Player(object):
     def __init__(self, agent):
         self.agent = agent
-        self.rewards = [0] * agent.env.nbObjects
-        self.tderrors = [0] * agent.env.nbObjects
+        self.rewards = agent.env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects)
+        self.tderrors = np.zeros(agent.env.nbObjects)
         self.name = 'player'
-        self.stat_steps = [0] * agent.env.nbObjects
+        self.stat_steps = np.zeros(agent.env.nbObjects)
+        # self.to_reinit = np.ones(agent.env.nbObjects)
 
     def play(self, object, goal_selector, action_selector):
         self.agent.env.reset()
@@ -46,19 +49,32 @@ class Player(object):
                     self.agent.env.reset()
                     goal = goal_selector.select(object)
                     episodes += 1
-        self.rewards[object] += r
-        self.tderrors[object] += tderror
+        # if self.to_reinit[object]:
+        #     self.stat_steps[object] = 0
+        #     self.rewards[object] = 0
+        #     self.tderrors[object] = 0
+        #     self.to_reinit[object] = 0
+        if self.stat_steps[object] == 0:
+            self.rewards[object] = r
+            self.tderrors[object] = tderror
+        else:
+            self.rewards[object] += r
+            self.tderrors[object] += tderror
         self.stat_steps[object] += episodes
+
+        # print(object, r, episodes)
+        # print('reward', self.rewards[0])
+        # print('ep', self.stat_steps[0])
         return transitions, r/episodes
 
-    @property
     def stats(self):
         d = {}
-        for i, (r, tde, s) in enumerate(zip(self.rewards, self.tderrors, self.stat_steps)):
-            if s!=0:
-                d['reward_{}'.format(i)] = r / s
-                d['tderror_{}'.format(i)] = tde / (s * self.agent.env_steps)
-        self.rewards = [0] * self.agent.env.nbObjects
-        self.tderrors = [0] * self.agent.env.nbObjects
-        self.stat_steps = [0] * self.agent.env.nbObjects
+        for i, s in enumerate(self.stat_steps):
+            if s !=0:
+                self.rewards[i] /= s
+                self.tderrors[i] /= s
+                # self.to_reinit[i] = 1
+            self.stat_steps[i] = 0
+        d['rewards'] = self.rewards
+        d['tderrors'] = self.tderrors
         return d

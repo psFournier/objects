@@ -13,6 +13,7 @@ class Agent(object):
         self.action_selector = None
         self.object_selector = None
         self.evaluators = None
+        self.experts = None
         self.player = None
         self.loggers = loggers
         self.env_step = 0
@@ -31,11 +32,11 @@ class Agent(object):
 
     def log(self):
         # Careful: stats are reinitialized when called
-        stats = {module.name: module.stats for module in [self.goal_selector,
+        stats = {module.name: module.stats() for module in [self.goal_selector,
                                                           self.action_selector,
                                                           self.object_selector,
                                                           self.player,
-                                                          self.model] + self.evaluators}
+                                                          self.model] + self.evaluators + list(self.experts.values())}
         for logger in self.loggers:
             logger.logkv('trainstep', self.train_step)
             logger.logkv('envstep', self.env_step)
@@ -109,10 +110,11 @@ class Agent(object):
             reward = play_reward - self.last_play_reward
             self.last_play_reward = play_reward
             self.object_selector.update_weights(object, reward)
-            self.object_selector.experts['lp'].update_probs(object, play_reward)
-            print(reward)
-            print(self.object_selector.experts_weights)
-            print(self.object_selector.experts['lp'].probs)
+            for expert in self.experts.values():
+                expert.update_probs(object, play_reward)
+            # print(reward)
+            # print(self.object_selector.experts_weights)
+            # print(self.object_selector.experts['lp'].probs)
 
             if ep % self.log_freq == 0 and ep > 0:
                 for evaluator in self.evaluators:

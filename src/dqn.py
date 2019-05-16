@@ -186,7 +186,6 @@ class Controller(object):
         res = [np.vstack(x) for x in [states, goals, actions, targets, ros]]
         return res
 
-    @property
     def stats(self):
         d = {}
         if self.stat_steps != 0:

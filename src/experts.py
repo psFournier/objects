@@ -3,13 +3,14 @@ from collections import deque
 from utils import softmax
 
 class LP_expert(object):
-    def __init__(self, agent):
+    def __init__(self, agent, eta, beta, maxlen):
         self.agent = agent
-        self.name = 'lp_expert'
-        self.competence_queues = [deque([-50], maxlen=100) for _ in range(agent.env.nbObjects)]
+        self.name = '_'.join(['lp', str(eta), str(beta), str(maxlen)]) + '_expert'
+        self.competence_queues = [deque([agent.env_steps * agent.wrapper.rNotTerm], maxlen=maxlen)
+                                  for _ in range(agent.env.nbObjects)]
         self.lps = np.zeros(agent.env.nbObjects)
-        self.eta = 0.1
-        self.beta = 3
+        self.eta = eta
+        self.beta = beta
 
     def update_probs(self, object, reward):
         lp = reward - np.mean(self.competence_queues[object])
@@ -20,6 +21,10 @@ class LP_expert(object):
     def probs(self):
         return softmax(self.lps - min(self.lps), theta=self.beta)
 
+    def stats(self):
+        d = {'probs': self.probs}
+        return d
+
 class Reached_states_variance_maximizer_expert(object):
     def __init__(self, agent):
         self.K = agent.env.nbObjects
@@ -27,7 +32,7 @@ class Reached_states_variance_maximizer_expert(object):
         self.probs = None
         self.name = 'rsv'
 
-    def update_probs(self):
+    def update_probs(self, object, reward):
         reached_states_all = []
         for buffer in self.buffer._buffers:
             if buffer._numsamples != 0:
@@ -48,9 +53,12 @@ class Uniform_expert(object):
         self.K = agent.env.nbObjects
         self.name = 'uni'
 
-    def update_probs(self):
+    def update_probs(self, object, reward):
         pass
 
     @property
     def probs(self):
         return np.array(1 / self.K * np.ones(self.K))
+
+    def stats(self):
+        return {}

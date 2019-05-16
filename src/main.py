@@ -73,12 +73,17 @@ if __name__ == '__main__':
     #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
     agent = Agent(args, env, wrapper, model, [loggerTB, loggerStdoutJSON])
 
-    experts_dict = {
-        'uni': Uniform_expert,
-        'rsv': Reached_states_variance_maximizer_expert,
-        'lp': LP_expert
-    }
-    experts = {name: experts_dict[name](agent) for name in args['--experts'].split(',')}
+    # experts_dict = {
+    #     'uni': Uniform_expert,
+    #     'rsv': Reached_states_variance_maximizer_expert,
+    #     'lp': LP_expert
+    # }
+    experts = {'uni': Uniform_expert(agent)}
+    for eta in [0.001,0.01,0.1]:
+        for beta in [0.1, 1, 5]:
+            for maxlen in [50]:
+                experts['_'.join(['lp', str(eta), str(beta), str(maxlen)])] = LP_expert(agent, eta, beta, maxlen)
+    # experts = {name: experts_dict[name](agent) for name in args['--experts'].split(',')}
     goal_selectors = {
         'buffer': Buffer_goal_selector,
         'uniform': Uniform_goal_selector,
@@ -96,10 +101,9 @@ if __name__ == '__main__':
         # Test_episode_evaluator(agent),
         # Train_episode_evaluator(agent)
     ]
-    agent.object_selector = EXP4(experts=experts,
-                                 K=env.nbObjects,
-                                 gamma=float(args['--exp4gamma']))
-    # agent.object_selector = Uniform_object_selector(K=int(args['--nbObjectsTrain']))
+    agent.experts = experts
+    # agent.object_selector = EXP4(agent, gamma=float(args['--exp4gamma']))
+    agent.object_selector = Uniform_object_selector(K=env.nbObjects)
     agent.goal_selector = goal_selectors[args['--goals']](agent)
     agent.action_selector = action_selectors[args['--actions']](agent)
     agent.player = Player(agent)

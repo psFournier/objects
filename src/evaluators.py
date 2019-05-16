@@ -26,9 +26,8 @@ class Test_episode_evaluator(object):
             reward = 0
         return reward
 
-    @property
     def stats(self):
-        return self.player.stats
+        return self.player.stats()
 
 class Train_episode_evaluator(object):
     def __init__(self, agent):
@@ -51,9 +50,8 @@ class Train_episode_evaluator(object):
         self.last_eval = eval
         return reward
 
-    @property
     def stats(self):
-        return self.player.stats
+        return self.player.stats()
 
 
 class Reached_states_variance_evaluator(object):
@@ -79,7 +77,6 @@ class Reached_states_variance_evaluator(object):
         self.last_eval = eval
         return reward
 
-    @property
     def stats(self):
         return {'eval': self.last_eval}
 
