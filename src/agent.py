@@ -93,9 +93,10 @@ class Agent(object):
 
             reward = play_reward - self.last_play_reward
             self.last_play_reward = play_reward
-            self.object_selector.update_weights(object, reward)
             for expert in self.experts.values():
                 expert.update_probs(object, play_reward)
+            self.object_selector.update_weights(object, reward)
+
             # print(reward)
             # print(self.object_selector.experts_weights)
             # print(self.object_selector.experts['lp'].probs)

@@ -35,12 +35,12 @@ Options:
   --lambda VAL             [default: 0]
   --nbObjects VAL          [default: 1]
   --evaluator VAL          [default: approxglobal]
-  --objects VAL     [default: rndobject]
+  --objects VAL            [default: uni]
   --exp4gamma VAL          [default: 0.1]
   --exp4beta VAL           [default: 5]
   --exp4eta VAL            [default: 0.1]
-  --goals VAL       [default: unigoal]
-  --actions VAL     [default: rndaction]
+  --goals VAL              [default: unigoal]
+  --actions VAL            [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
   --episodes VAL     [default: 5000]
@@ -100,12 +100,15 @@ if __name__ == '__main__':
     }
     # Careful with the exploration in the action selector
     evaluators = [
-        # Test_episode_evaluator(agent),
-        # Train_episode_evaluator(agent)
+        Test_episode_evaluator(agent),
+        Train_episode_evaluator(agent)
     ]
+    object_selectors = {
+        'exp4': EXP4,
+        'uni': Uniform_object_selector
+    }
     agent.experts = experts
-    # agent.object_selector = EXP4(agent, gamma=float(args['--exp4gamma']))
-    agent.object_selector = Uniform_object_selector(K=env.nbObjects)
+    agent.object_selector = object_selectors[args['--objects']](agent)
     agent.goal_selector = goal_selectors[args['--goals']](agent)
     agent.action_selector = action_selectors[args['--actions']](agent)
     agent.player = Player(agent)

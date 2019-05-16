@@ -3,8 +3,8 @@ from utils import softmax
 from collections import deque
 
 class Uniform_object_selector(object):
-    def __init__(self, K):
-        self.K = K
+    def __init__(self, agent):
+        self.K = agent.env.nbObjects
         self.name = 'uni_obj'
 
     def select(self):
@@ -17,9 +17,9 @@ class Uniform_object_selector(object):
         return {}
 
 class EXP4(object):
-    def __init__(self, agent, gamma):
+    def __init__(self, agent):
         self.agent = agent
-        self.gamma = gamma
+        self.gamma = 0.1
         self.K = agent.env.nbObjects
         self.attempts = np.zeros(self.K, dtype=int)
         self.experts_weights = np.ones(len(agent.experts), dtype='float32')
