@@ -14,7 +14,7 @@ from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
 from exp4 import EXP4, Uniform_object_selector
-from experts import Reached_states_variance_maximizer_expert, Uniform_expert
+from experts import Reached_states_variance_maximizer_expert, Uniform_expert, LP_expert
 from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator
 from players import Player
 
@@ -43,10 +43,10 @@ Options:
   --actions VAL     [default: rndaction]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
-  --episodes VAL     [default: 1000]
+  --episodes VAL     [default: 5000]
   --rndepisodes VAL     [default: 200]
   --seed SEED              [default: 1]
-  --experts VAL            [default: uni]
+  --experts VAL            [default: uni,lp]
   --nbObjectsTrain VAL     [default: 1]
   
 """
@@ -75,10 +75,10 @@ if __name__ == '__main__':
 
     experts_dict = {
         'uni': Uniform_expert,
-        'rsv': Reached_states_variance_maximizer_expert
+        'rsv': Reached_states_variance_maximizer_expert,
+        'lp': LP_expert
     }
-    experts_names = [name for name in args['--experts'].split(',')]
-    experts = [experts_dict[name](agent) for name in experts_names]
+    experts = {name: experts_dict[name](agent) for name in args['--experts'].split(',')}
     goal_selectors = {
         'buffer': Buffer_goal_selector,
         'uniform': Uniform_goal_selector,
@@ -93,14 +93,13 @@ if __name__ == '__main__':
     }
     # Careful with the exploration in the action selector
     evaluators = [
-        Test_episode_evaluator(agent),
-        Train_episode_evaluator(agent)
+        # Test_episode_evaluator(agent),
+        # Train_episode_evaluator(agent)
     ]
-    # agent.object_selector = EXP4(experts=experts,
-    #                              K=env.nbObjects,
-    #                              gamma=float(args['--exp4gamma']),
-    #                              beta=float(args['--exp4beta']))
-    agent.object_selector = Uniform_object_selector(K=int(args['--nbObjectsTrain']))
+    agent.object_selector = EXP4(experts=experts,
+                                 K=env.nbObjects,
+                                 gamma=float(args['--exp4gamma']))
+    # agent.object_selector = Uniform_object_selector(K=int(args['--nbObjectsTrain']))
     agent.goal_selector = goal_selectors[args['--goals']](agent)
     agent.action_selector = action_selectors[args['--actions']](agent)
     agent.player = Player(agent)

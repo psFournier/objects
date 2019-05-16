@@ -17,7 +17,7 @@ class Obj0():
                                0.,
                                # np.random.uniform(-.05, .05),
                                0.,
-                               0.
+                               .01
                                ])
 
 class Obj1():
@@ -31,7 +31,7 @@ class Obj1():
                                # np.random.uniform(-.05, .05),
                                0.,
                                0.,
-                               0.09
+                               .02
                                ])
 
 class Objects2(Env):
@@ -74,12 +74,12 @@ class Objects2(Env):
         if (newstate0 > state[0]  and state[0] <= state[2] and state[2] <= newstate0) \
                 or (newstate0 < state[0] and state[2] >= newstate0 and state[0] >= state[2]):
 
-        # if np.abs(state[2] - state[0]) < 0.005:
-        #     state[3] = state[3] + self.FFN.forward(state[np.array([1, 4])])
-            if np.random.rand() > 10*state[4]:
-                state[3] = 0.01 * np.sign(state[1])
-            else:
-                state[3] = 0
+            # if np.random.rand() > 10*state[4]:
+            #     state[3] = 0.01 * np.sign(state[1])
+            # else:
+            #     state[3] = 0
+
+            state[3] = 0.01 * np.sign(state[1]) * 100 *state[4]
         else:
             state[3] = 0
         state[2] = np.clip(state[2] + state[3], -0.05, 0.05)

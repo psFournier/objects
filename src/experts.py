@@ -1,4 +1,24 @@
 import numpy as np
+from collections import deque
+from utils import softmax
+
+class LP_expert(object):
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'lp_expert'
+        self.competence_queues = [deque([-50], maxlen=100) for _ in range(agent.env.nbObjects)]
+        self.lps = np.zeros(agent.env.nbObjects)
+        self.eta = 0.1
+        self.beta = 3
+
+    def update_probs(self, object, reward):
+        lp = reward - np.mean(self.competence_queues[object])
+        self.competence_queues[object].append(reward)
+        self.lps[object] += self.eta * (lp - self.lps[object])
+
+    @property
+    def probs(self):
+        return softmax(self.lps - min(self.lps), theta=self.beta)
 
 class Reached_states_variance_maximizer_expert(object):
     def __init__(self, agent):
@@ -26,8 +46,11 @@ class Reached_states_variance_maximizer_expert(object):
 class Uniform_expert(object):
     def __init__(self, agent):
         self.K = agent.env.nbObjects
-        self.probs = np.array(1 / self.K * np.ones(self.K))
         self.name = 'uni'
 
     def update_probs(self):
         pass
+
+    @property
+    def probs(self):
+        return np.array(1 / self.K * np.ones(self.K))

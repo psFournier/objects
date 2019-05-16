@@ -18,7 +18,6 @@ class Agent(object):
         self.env_step = 0
         self.train_step = 0
         self.last_ep = []
-        self.last_eval = 0
 
         self.batch_size = 64
         self.env_steps = 50
@@ -27,6 +26,8 @@ class Agent(object):
         self.episodes = int(args['--episodes'])
         self.log_freq = 10
         self.her = int(args['--her'])
+
+        self.last_play_reward = -self.env_steps
 
     def log(self):
         # Careful: stats are reinitialized when called
@@ -97,7 +98,7 @@ class Agent(object):
 
             if self.env_step > 10000:
                 self.train(object)
-            transitions,_ = self.player.play(object, self.goal_selector, self.action_selector)
+            transitions, play_reward = self.player.play(object, self.goal_selector, self.action_selector)
             # print(self.player.reward)
             self.env_step += self.env_steps
             if self.her == 1:
@@ -105,11 +106,16 @@ class Agent(object):
             else:
                 self.memorize(object, transitions)
 
-            # self.object_selector.update_weights(object, reward)
+            reward = play_reward - self.last_play_reward
+            self.last_play_reward = play_reward
+            self.object_selector.update_weights(object, reward)
+            self.object_selector.experts['lp'].update_probs(object, play_reward)
+            print(reward)
+            print(self.object_selector.experts_weights)
+            print(self.object_selector.experts['lp'].probs)
 
             if ep % self.log_freq == 0 and ep > 0:
-                # print('EVAAAAAAAAAAAAAAL')
                 for evaluator in self.evaluators:
-                    _ = evaluator.get_reward()
+                    evaluator.get_reward()
                 self.log()
 

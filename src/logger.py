@@ -113,14 +113,36 @@ class TensorBoardOutputFormat(OutputFormat):
 
     def writekvs(self, kvs):
         def summary_val(k, v):
-            kwargs = {'tag': k, 'simple_value': float(v)}
-            return self.tf.Summary.Value(**kwargs)
-        summary = self.tf.Summary(value=[summary_val(k, v) for k, v in kvs.items() if np.isscalar(v)])
+            if isinstance(v, np.ndarray):
+                d = [{'tag': '_'.join([k, str(i)]), 'simple_value': float(vi)} for i, vi in enumerate(v.flatten())]
+                summary = [self.tf.Summary.Value(**kwargs) for kwargs in d]
+            elif np.isscalar(v):
+                kwargs = {'tag': k, 'simple_value': float(v)}
+                summary = [self.tf.Summary.Value(**kwargs)]
+            else:
+                print('string summary')
+                summary = []
+            return summary
+        value = []
+        for k,v in kvs.items():
+            value += summary_val(k, v)
+        summary = self.tf.Summary(value=value)
         event = self.event_pb2.Event(wall_time=time.time(), summary=summary)
         event.step = self.step # is there any reason why you'd want to specify the step?
         self.writer.WriteEvent(event)
         self.writer.Flush()
         self.step += 1
+
+    # def writekvs(self, kvs):
+    #     def summary_val(k, v):
+    #         kwargs = {'tag': k, 'simple_value': float(v)}
+    #         return self.tf.Summary.Value(**kwargs)
+    #     summary = self.tf.Summary(value=[summary_val(k, v) for k, v in kvs.items() if np.isscalar(v)])
+    #     event = self.event_pb2.Event(wall_time=time.time(), summary=summary)
+    #     event.step = self.step # is there any reason why you'd want to specify the step?
+    #     self.writer.WriteEvent(event)
+    #     self.writer.Flush()
+    #     self.step += 1
 
     def close(self):
         if self.writer:
