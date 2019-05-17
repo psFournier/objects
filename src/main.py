@@ -44,7 +44,7 @@ Options:
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
   --episodes VAL     [default: 5000]
-  --rndepisodes VAL     [default: 200]
+  --agentEta VAL     [default: 0.1]
   --seed SEED              [default: 1]
   --experts VAL            [default: uni,lp]
   --nbObjectsTrain VAL     [default: 1]

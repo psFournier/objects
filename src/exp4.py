@@ -19,7 +19,7 @@ class Uniform_object_selector(object):
 class EXP4(object):
     def __init__(self, agent):
         self.agent = agent
-        self.gamma = 0.1
+        self.gamma = float(agent.args['--exp4gamma'])
         self.K = agent.env.nbObjects
         self.attempts = np.zeros(self.K, dtype=int)
         self.experts_weights = np.ones(len(agent.experts), dtype='float32')
@@ -37,10 +37,14 @@ class EXP4(object):
         return self.exp4_probs
 
     def update_weights(self, object, reward):
+        # print(reward)
         for i, expert in enumerate(self.agent.experts.values()):
             a = self.gamma * reward * expert.probs[object]
             b = self.K * self.exp4_probs[object]
+            # if i==3: print(expert.name, expert.probs[object], self.exp4_probs[object], np.exp(a/b))
             self.experts_weights[i] *= np.exp(a/b)
+            # if i==3: print(self.experts_weights[i])
+            # if a/b > 10: print(object, reward, expert.name,expert.probs[object], /)
 
     def select(self):
         self.update_probs()
@@ -56,5 +60,6 @@ class EXP4(object):
     def stats(self):
         d = {}
         d['probs'] = self.exp4_probs
-        d['weights'] = self.experts_weights
+        for i,e in enumerate(self.agent.experts.values()):
+            d['weight_'+e.name] = self.experts_weights[i]
         return d

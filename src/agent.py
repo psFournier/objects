@@ -27,8 +27,10 @@ class Agent(object):
         self.episodes = int(args['--episodes'])
         self.log_freq = 10
         self.her = int(args['--her'])
+        self.args = args
+        self.eta = float(self.args['--agentEta'])
 
-        self.last_play_reward = -self.ep_env_steps
+        self.last_play_rewards = self.ep_env_steps * wrapper.rNotTerm * np.ones(env.nbObjects)
 
     def log(self):
         # Careful: stats are reinitialized when called
@@ -91,11 +93,11 @@ class Agent(object):
             else:
                 self.memorize(object, transitions)
 
-            reward = play_reward - self.last_play_reward
-            self.last_play_reward = play_reward
+            progress = play_reward - self.last_play_rewards[object]
+            self.last_play_rewards[object] += self.eta * progress
+            self.object_selector.update_weights(object, progress)
             for expert in self.experts.values():
                 expert.update_probs(object, play_reward)
-            self.object_selector.update_weights(object, reward)
 
             # print(reward)
             # print(self.object_selector.experts_weights)
