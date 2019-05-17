@@ -23,7 +23,6 @@ class Agent(object):
         self.batch_size = 64
         self.ep_env_steps = 50
         self.ep_train_steps = 50
-        self.random_play_episodes = int(args['--rndepisodes'])
         self.episodes = int(args['--episodes'])
         self.log_freq = 10
         self.her = int(args['--her'])
