@@ -2,6 +2,25 @@ import numpy as np
 from collections import deque
 from utils import softmax
 
+class Object_expert(object):
+    def __init__(self, agent, object):
+        self.agent = agent
+        self.object = object
+        self.name = 'obj_'+str(object)+'_expert'
+        self.array_probs = np.zeros(agent.env.nbObjects)
+        self.array_probs[object] = 1
+
+    def update_probs(self, object, reward):
+        pass
+
+    @property
+    def probs(self):
+        return self.array_probs
+
+    def stats(self):
+        d = {'probs': self.probs}
+        return d
+
 class LP_expert(object):
     def __init__(self, agent, eta, beta, maxlen):
         self.agent = agent
@@ -22,7 +41,8 @@ class LP_expert(object):
         return softmax(self.lps - min(self.lps), theta=self.beta)
 
     def stats(self):
-        d = {'probs': self.probs}
+        d = {'probs': self.probs,
+             'lps': self.lps}
         return d
 
 class Reached_states_variance_maximizer_expert(object):

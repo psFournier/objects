@@ -13,12 +13,8 @@ class Obj():
         self.reset()
         self.ranges = np.array([
             [-0.1, 0.1],
-            [-0.1, 0.1],
-            [-0.02, 0.02],
             [-0.02, 0.02],
             [-0.07, 0.07],
-            [-0.07, 0.07],
-            [-0.02, 0.02],
             [-0.02, 0.02],
             [0, 1],
             [0, 1]
@@ -31,25 +27,23 @@ class Obj():
                                0.,
                                0.,
                                0.,
-                               0.,
-                               0.,
-                               0.,
-                               0.,
                                self.init_val[0],
                                self.init_val[1]
                                ])
 
-class Objects3(Env):
+class Objects4(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
     def __init__(self, seed=None):
-        self.nbFeatures = 10
-        self.nbActions = 5
+        self.nbFeatures = 6
+        self.nbActions = 3
         self.lastaction = None
+        # rng = np.random.RandomState(seed)
+        # self.FFN = FeedForwardNetwork(2, [4], 1, rng, 1, 0.05)
         self.set_objects()
 
     def set_objects(self, n=None):
-        initvals = [[0.1, 0.1], [0.9, 0.9], [0.1, 0.9], [0.9, 0.1]]
+        initvals = [[0.1, 0.1], [0.5, 0.1], [0.9, 0.1], [0.5, 0.1], [0.5, 0.5], [0.5, 0.9], [0.9, 0.1], [0.9, 0.5], [0.9, 0.9]]
         self.nbObjects = len(initvals)
         self.objects = [Obj(self, np.array(initval)) for initval in initvals]
 
@@ -67,35 +61,18 @@ class Objects3(Env):
         return self.state, 0, 0, {}
 
     def next_state(self, state, a):
-
         if a == 1:
-            state[2] = np.clip(state[2] + 0.001, -0.02, 0.02)
+            state[1] = np.clip(state[1] + 0.001, -0.02, 0.02)
         elif a == 2:
-            state[2] = np.clip(state[2] - 0.001, -0.02, 0.02)
-        elif a == 3:
-            state[3] = np.clip(state[3] + 0.001, -0.02, 0.02)
-        elif a == 4:
-            state[3] = np.clip(state[3] - 0.001, -0.02, 0.02)
-
-        newstate0 = np.clip(state[0] + state[2], -0.1, 0.1)
-        if (newstate0 > state[0] and state[0] <= state[4] and state[4] <= newstate0) \
-                or (newstate0 < state[0] and state[4] >= newstate0 and state[0] >= state[4]):
-            state[6] = state[2]
+            state[1] = np.clip(state[1] - 0.001, -0.02, 0.02)
+        newstate0 = np.clip(state[0] + state[1], -0.1, 0.1)
+        if (newstate0 > state[0]  and state[0] <= state[2] and state[2] <= newstate0) \
+                or (newstate0 < state[0] and state[2] >= newstate0 and state[0] >= state[2]):
+            state[3] = state[1] * state[4]
         else:
-            state[6] = state[6] * state[8]
-
-        newstate1 = np.clip(state[1] + state[3], -0.1, 0.1)
-        if (newstate1 > state[1] and state[1] <= state[5] and state[5] <= newstate1) \
-                or (newstate1 < state[1] and state[5] >= newstate1 and state[1] >= state[5]):
-            state[7] = state[3]
-        else:
-            state[7] = state[7] * state[9]
-
-        state[4] = np.clip(state[4] + state[6], -0.07, 0.07)
-        state[5] = np.clip(state[5] + state[7], -0.07, 0.07)
+            state[3] = state[5] * state[3]
+        state[2] = np.clip(state[2] + state[3], -0.07, 0.07)
         state[0] = newstate0
-        state[1] = newstate1
-
         return state
 
     def reset(self):
@@ -108,4 +85,3 @@ class Objects3(Env):
     def state(self):
         res = np.hstack([(obj.state - obj.avgs) / obj.spans for obj in self.objects])
         return res
-

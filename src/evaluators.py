@@ -2,26 +2,41 @@ import numpy as np
 from actionSelectors import State_goal_max_action_selector
 from players import Player
 
+class TDerror_evaluator(object):
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'tderror_eval'
+        self.history = []
+
+    def get_reward(self):
+        transitions = self.agent.buffer.sample(200)
+        states0 = np.vstack([t['s0'] for t in transitions])
+        goals = np.vstack([t['g'] for t in transitions])
+        actions = np.vstack([t['a0'] for t in transitions])
+        qvals = self.agent.model._qval([states0, goals, actions])[0]
+        states1 = np.vstack([t['s1'] for t in transitions])
+        targetqvals = self.agent.model._targetqvals([states1, goals])[0]
+        rewards, terminals = self.agent.wrapper.get_r(states1, goals)
+        targetqvals = rewards + (1 - terminals) * np.max(targetqvals, axis=1)
+        reward = np.sqrt(np.mean(np.square(qvals - targetqvals)))
+        return reward
+
 class Test_episode_evaluator(object):
     def __init__(self, agent):
         self.agent = agent
-        self.last_eval = 0
         self.name = 'test_ep_eval'
         self.reward = 0
-        self.stat_steps = 0
         self.action_selector = State_goal_max_action_selector(agent)
         self.player = Player(agent)
 
     def get_reward(self):
-        eval = 0
+        reward = 0
         if self.agent.object_selector.K < self.agent.env.nbObjects:
             for _ in range(10):
                 object = np.random.randint(self.agent.object_selector.K, self.agent.env.nbObjects)
                 _, r = self.player.play(object, self.agent.goal_selector, self.action_selector)
-                eval += r
-            eval /= (self.agent.env.nbObjects - self.agent.object_selector.K)
-            reward = eval - self.last_eval
-            self.last_eval = eval
+                reward += r
+            reward /= (self.agent.env.nbObjects - self.agent.object_selector.K)
         else:
             reward = 0
         return reward
@@ -32,22 +47,18 @@ class Test_episode_evaluator(object):
 class Train_episode_evaluator(object):
     def __init__(self, agent):
         self.agent = agent
-        self.last_eval = 0
         self.name = 'train_ep_eval'
         self.reward = 0
-        self.stat_steps = 0
         self.action_selector = State_goal_max_action_selector(agent)
         self.player = Player(agent)
 
     def get_reward(self):
-        eval = 0
+        reward = 0
         for _ in range(10):
             object = np.random.randint(self.agent.object_selector.K)
             _, r = self.player.play(object, self.agent.goal_selector, self.action_selector)
-            eval += r
-        eval /= self.agent.object_selector.K
-        reward = eval - self.last_eval
-        self.last_eval = eval
+            reward += r
+        reward /= self.agent.object_selector.K
         return reward
 
     def stats(self):
@@ -140,23 +151,7 @@ class Qval_evaluator(object):
     def stats(self):
         return {'eval': self.last_eval}
 
-class TDerror_evaluator(object):
-    def __init__(self, buffer, model, wrapper):
-        self.buffer = buffer
-        self.model = model
-        self.wrapper = wrapper
 
-    def evaluate(self):
-        transitions = self.buffer.sample(200)
-        states0 = np.vstack([t['s0'] for t in transitions])
-        goals = np.vstack([t['g'] for t in transitions])
-        actions = np.vstack([t['a0'] for t in transitions])
-        qvals = self.model._qval([states0, goals, actions])[0]
-        states1 = np.vstack([t['s1'] for t in transitions])
-        targetqvals = self.model._targetqvals([states1, goals])[0]
-        rewards, terminals = self.wrapper.get_r(states1, goals)
-        targetqvals = rewards + (1 - terminals) * np.max(targetqvals, axis=1)
-        return np.mean(np.square(qvals - targetqvals))
 
 class ApproxError_buffer_evaluator(object):
     def __init__(self, buffer, model):

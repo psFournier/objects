@@ -34,7 +34,8 @@ class Controller(object):
         updates = Adam(lr=0.001).get_updates(loss, self.model.trainable_weights)
         self._qvals = K.function(inputs=[S, G], outputs=[qvals], updates=None)
         self._qval = K.function(inputs=[S, G, A], outputs=[qval], updates=None)
-        self._train = K.function([S, G, A, targets], [loss, qval, td_errors], updates)
+        self._train = K.function([S, G, A, targets], [loss, qval, td_errors], updates=updates)
+        self._test = K.function([S, G, A, targets], [loss, qval, td_errors], updates=None)
 
         S_target, G_target = Input(shape=(agent.wrapper.state_dim,)), Input(shape=(agent.wrapper.goal_dim,))
         targetQvals = self.create_network(S_target, G_target, agent.wrapper.action_dim, dropout, l2reg)
@@ -70,30 +71,33 @@ class Controller(object):
         return Q_values
 
     def train(self, object):
+        progress = 0
         if self.agent.buffer._buffers[object]._numsamples > self.agent.batch_size:
-            for _ in range(self.agent.ep_train_steps):
-                exps = self.agent.buffer.sample(self.agent.batch_size, object)
-                nStepExpes = self.getNStepSequences(exps)
-                nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
-                states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
-                inputs = [states, actions, goals, targets]
-                loss, qval, td_errors = self._train(inputs)
-                self.target_train()
-                self.rho += np.mean(rhos)
-                if self.stat_steps[object] == 0:
-                    self.targets[object] = np.mean(targets)
-                    self.rewards[object] = mean_reward
-                    self.tderrors[object] = np.mean(td_errors)
-                    self.qvals[object] = np.mean(qval)
-                else:
-                    self.targets[object] += np.mean(targets)
-                    self.rewards[object] += mean_reward
-                    self.tderrors[object] += np.mean(td_errors)
-                    self.qvals[object] += np.mean(qval)
-                self.stat_steps[object] += 1
-                self.agent.train_steps[object] += 1
+            exps = self.agent.buffer.sample(self.agent.batch_size, object)
+            nStepExpes = self.getNStepSequences(exps)
+            nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
+            states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
+            inputs = [states, actions, goals, targets]
+            loss_before, qval_before, td_errors_before = self._train(inputs)
+            loss_after, qval_after, td_errors_after = self._test(inputs)
+            progress = loss_after - loss_before
+            self.target_train()
+            self.rho += np.mean(rhos)
+            if self.stat_steps[object] == 0:
+                self.targets[object] = np.mean(targets)
+                self.rewards[object] = mean_reward
+                self.tderrors[object] = np.mean(td_errors_before)
+                self.qvals[object] = np.mean(qval_before)
+            else:
+                self.targets[object] += np.mean(targets)
+                self.rewards[object] += mean_reward
+                self.tderrors[object] += np.mean(td_errors_before)
+                self.qvals[object] += np.mean(qval_before)
+            self.stat_steps[object] += 1
+            self.agent.train_steps[object] += 1
         else:
             print('not enough samples for batchsize')
+        return progress
 
     def getNStepSequences(self, exps):
         nStepSeqs = []

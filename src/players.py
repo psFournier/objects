@@ -4,7 +4,7 @@ class Player(object):
     def __init__(self, agent):
         self.agent = agent
         self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects)
-        self.tderrors = np.zeros(agent.env.nbObjects)
+        # self.tderrors = np.zeros(agent.env.nbObjects)
         self.name = 'player'
         self.stat_steps = np.zeros(agent.env.nbObjects)
         # self.to_reinit = np.ones(agent.env.nbObjects)
@@ -15,8 +15,6 @@ class Player(object):
         # print(self.name, goal)
         transitions = [[] for o in range(self.agent.env.nbObjects)]
         r = 0.
-        tderror = 0.
-        lastqval = None
         episodes = 1
         for _ in range(self.agent.ep_env_steps):
             fullstate0 = self.agent.env.state
@@ -40,9 +38,9 @@ class Player(object):
             if goal.size == self.agent.wrapper.goal_dim:
                 rs, ts = self.agent.wrapper.get_r(states1[object], goal)
                 r += rs[0]
-                if lastqval is not None:
-                    tderror += (lastqval - rs[0] - self.agent.model._gamma * max(qvals))**2
-                lastqval = qvals[action]
+                # if lastqval is not None:
+                #     tderror += (lastqval - rs[0] - self.agent.model._gamma * max(qvals))**2
+                # lastqval = qvals[action]
                 if ts[0]:
                     self.agent.env.reset()
                     goal = goal_selector.select(object)
@@ -50,10 +48,10 @@ class Player(object):
 
         if self.stat_steps[object] == 0:
             self.rewards[object] = r
-            self.tderrors[object] = tderror
+            # self.tderrors[object] = tderror
         else:
             self.rewards[object] += r
-            self.tderrors[object] += tderror
+            # self.tderrors[object] += tderror
         self.stat_steps[object] += episodes
 
         return transitions, r/episodes
@@ -63,8 +61,8 @@ class Player(object):
         for i, s in enumerate(self.stat_steps):
             if s !=0:
                 self.rewards[i] /= s
-                self.tderrors[i] /= s
+                # self.tderrors[i] /= s
             self.stat_steps[i] = 0
         d['rewards'] = self.rewards
-        d['tderrors'] = self.tderrors
+        # d['tderrors'] = self.tderrors
         return d

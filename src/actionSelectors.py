@@ -80,8 +80,10 @@ class State_goal_soft_action_selector(object):
         input = [np.expand_dims(state, axis=0), np.expand_dims(goal, axis=0)]
         qvals = self.agent.model._qvals(input)[0].squeeze()
         self.min_max += max(qvals) - min(qvals)
-        probs = softmax(qvals, theta=0.5 + 1.5*min(1, sum(self.agent.train_steps)/10000))
+        # probs = softmax(qvals, theta=0.5 + 1.5*min(1, sum(self.agent.train_steps)/10000))
         # print(state, goal)
+        probs = softmax(qvals, theta=2)
+
         sorted_probs = np.sort(probs)
         self.min_max_prob += sorted_probs[-1] - sorted_probs[0]
         self.max_max_prob += sorted_probs[-1] - sorted_probs[-2]

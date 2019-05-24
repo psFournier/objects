@@ -13,8 +13,8 @@ from actionSelectors import Random_action_selector, State_goal_soft_action_selec
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
-from exp4 import EXP4, Uniform_object_selector
-from experts import Reached_states_variance_maximizer_expert, Uniform_expert, LP_expert
+from exp4 import EXP4, Uniform_object_selector, EXP3
+from experts import Reached_states_variance_maximizer_expert, Uniform_expert, LP_expert, Object_expert
 from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator
 from players import Player
 
@@ -25,8 +25,8 @@ Usage:
 
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
-  --initq VAL              [default: 0]
-  --layers VAL             [default: 32,32]
+  --initq VAL              [default: -100]
+  --layers VAL             [default: 8,8]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
@@ -36,11 +36,11 @@ Options:
   --nbObjects VAL          [default: 1]
   --evaluator VAL          [default: approxglobal]
   --objects VAL            [default: uni]
-  --exp4gamma VAL          [default: 0.1]
-  --exp4beta VAL           [default: 5]
-  --exp4eta VAL            [default: 0.1]
-  --goals VAL              [default: unigoal]
-  --actions VAL            [default: rndaction]
+  --expgamma VAL          [default: 0.1]
+  --expbeta VAL           [default: 5]
+  --expeta VAL            [default: 0.1]
+  --goals VAL              [default: uniform]
+  --actions VAL            [default: sgsoft]
   --dropout VAL            [default: 1]
   --l2reg VAL              [default: 0]
   --episodes VAL     [default: 5000]
@@ -48,6 +48,7 @@ Options:
   --seed SEED              [default: 1]
   --experts VAL            [default: uni,lp]
   --nbObjectsTrain VAL     [default: 1]
+  --globalEval VAL         [default: tderror]
   
 """
 
@@ -61,6 +62,7 @@ if __name__ == '__main__':
                               format_strs=['json', 'stdout'])
 
     env, wrapper = make(args['--env'], args)
+    env.set_objects(n=int(args['--nbObjects']))
 
     # model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]),
     #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
@@ -80,12 +82,16 @@ if __name__ == '__main__':
     #     'rsv': Reached_states_variance_maximizer_expert,
     #     'lp': LP_expert
     # }
-    experts = {'uni': Uniform_expert(agent)}
-    for eta in [0.001,0.01,0.1]:
-        for beta in [0.1, 1, 5]:
-            for maxlen in [50]:
-                experts['_'.join(['lp', str(eta), str(beta), str(maxlen)])] = LP_expert(agent, eta, beta, maxlen)
+    # experts = {'uni': Uniform_expert(agent)}
+    # for eta in [0.001,0.01,0.1]:
+    #     for beta in [0.1, 1, 5]:
+    #         for maxlen in [50]:
+    #             experts['_'.join(['lp', str(eta), str(beta), str(maxlen)])] = LP_expert(agent, eta, beta, maxlen)
     # experts = {name: experts_dict[name](agent) for name in args['--experts'].split(',')}
+    experts = {}
+    for object in range(env.nbObjects):
+        experts['obj_'+str(object)] = Object_expert(agent, object)
+
     goal_selectors = {
         'buffer': Buffer_goal_selector,
         'uniform': Uniform_goal_selector,
@@ -105,7 +111,11 @@ if __name__ == '__main__':
     ]
     object_selectors = {
         'exp4': EXP4,
-        'uni': Uniform_object_selector
+        'uni': Uniform_object_selector,
+        'exp3': EXP3
+    }
+    global_evaluators = {
+        'tderror': TDerror_evaluator
     }
     agent.experts = experts
     agent.object_selector = object_selectors[args['--objects']](agent)
@@ -113,4 +123,5 @@ if __name__ == '__main__':
     agent.action_selector = action_selectors[args['--actions']](agent)
     agent.player = Player(agent)
     agent.evaluators = evaluators
+    agent.global_evaluator = global_evaluators[args['--globalEval']](agent)
     agent.learn()
