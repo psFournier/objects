@@ -11,20 +11,6 @@ class Obj():
         self.env = env
         self.init_val = init_val
         self.reset()
-        self.ranges = np.array([
-            [-0.1, 0.1],
-            [-0.1, 0.1],
-            [-0.02, 0.02],
-            [-0.02, 0.02],
-            [-0.07, 0.07],
-            [-0.07, 0.07],
-            [-0.02, 0.02],
-            [-0.02, 0.02],
-            [0, 1],
-            [0, 1]
-        ])
-        self.avgs = np.mean(self.ranges, axis=1)
-        self.spans = self.ranges[:, 1] - self.ranges[:, 0]
 
     def reset(self):
         self.state = np.array([0.,
@@ -46,6 +32,20 @@ class Objects3(Env):
         self.nbFeatures = 10
         self.nbActions = 5
         self.lastaction = None
+        self.ranges = np.array([
+            [-0.1, 0.1],
+            [-0.1, 0.1],
+            [-0.02, 0.02],
+            [-0.02, 0.02],
+            [-0.07, 0.07],
+            [-0.07, 0.07],
+            [-0.02, 0.02],
+            [-0.02, 0.02],
+            [0, 1],
+            [0, 1]
+        ])
+        self.avgs = np.mean(self.ranges, axis=1)
+        self.spans = self.ranges[:, 1] - self.ranges[:, 0]
         self.set_objects()
 
     def set_objects(self, n=None):
@@ -106,6 +106,5 @@ class Objects3(Env):
 
     @property
     def state(self):
-        res = np.hstack([(obj.state - obj.avgs) / obj.spans for obj in self.objects])
+        res = np.hstack([obj.state for obj in self.objects])
         return res
-

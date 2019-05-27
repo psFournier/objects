@@ -2,6 +2,7 @@ import numpy as np
 from prioritizedReplayBuffer import ReplayBuffer
 from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_selector
 from actionSelectors import Random_action_selector
+import time
 
 class Agent(object):
     def __init__(self, args, env, wrapper, loggers):
@@ -22,8 +23,8 @@ class Agent(object):
         self.last_ep = []
 
         self.batch_size = 64
-        self.ep_env_steps = 50
-        self.ep_train_steps = 50
+        self.ep_env_steps = int(args['--episodeSteps'])
+        self.ep_train_steps = int(args['--episodeSteps'])
         self.episodes = int(args['--episodes'])
         self.log_freq = 10
         self.her = int(args['--her'])
@@ -32,7 +33,8 @@ class Agent(object):
 
         # self.last_play_rewards = [[self.ep_env_steps * wrapper.rNotTerm] for _ in range(env.nbObjects)]
         # self.progresses = [0] * env.nbObjects
-        self.progress_history = [0]
+        self.progress_reservoir = [0]
+        self.low_r, self.high_r = -1, 1
         self.name = 'agent'
 
     def log(self):
@@ -56,51 +58,57 @@ class Agent(object):
             logger.dumpkvs()
 
     def memorize_her(self, object, transitions):
-        on_policy_transitions = transitions[object]
-        length = len(on_policy_transitions)
-        her_goals_idx = np.random.choice(length - 1, 3)
-        her_goals_idx= np.append(her_goals_idx, length - 1)
-        for i, tr in enumerate(on_policy_transitions):
-            if tr['g'].size == self.wrapper.goal_dim:
-                if i == length - 1:
-                    tr['next'] = None
-                else:
-                    tr['next'] = on_policy_transitions[i + 1]
+        for ep in transitions:
+            length = len(ep)
+            nb_her_samples = min(3, length - 1)
+            her_goals_idx = np.random.choice(length - 1, nb_her_samples, replace=False)
+            her_goals_idx= np.append(her_goals_idx, length - 1)
+            for i, tr in enumerate(ep):
+                # if tr['g'].size == self.wrapper.goal_dim:
+                    # if i == length - 1:
+                    #     tr['next'] = None
+                    # else:
+                    #     tr['next'] = transitions[i + 1]
                 self.buffer.append(tr)
-            for j, idx in enumerate(her_goals_idx):
-                g = on_policy_transitions[idx]['s1'][self.wrapper.goal_idxs]
-                if idx >= i and g != on_policy_transitions[0]['s0'][self.wrapper.goal_idxs]:
-                    tr_her = tr.copy()
-                    tr_her['g'] = g
-                    self.buffer.append(tr_her)
+                for j, idx in enumerate(her_goals_idx):
+                    g = ep[idx]['s1'][self.wrapper.goal_idxs]
+                    if idx >= i and g != ep[0]['s0'][self.wrapper.goal_idxs]:
+                        tr_her = tr.copy()
+                        tr_her['g'] = g
+                        self.buffer.append(tr_her)
 
     def memorize(self, object, transitions):
-        on_policy_transitions = transitions[object]
-        for i, tr in enumerate(on_policy_transitions):
-            # if i == length - 1:
-            #     tr['next'] = None
-            # else:
-            #     tr['next'] = on_policy_transitions[i + 1]
-            self.buffer.append(tr)
+        for ep in transitions:
+            for j, tr in enumerate(ep):
+                # if i == length - 1:
+                #     tr['next'] = None
+                # else:
+                #     tr['next'] = on_policy_transitions[i + 1]
+                self.buffer.append(tr)
 
     def learn(self):
 
         for ep in range(self.episodes):
-
             if sum(self.env_steps) > 10000:
                 for _ in range(self.ep_train_steps):
                     object = self.object_selector.select()
                     progress = self.model.train(object)
-                    if len(self.progress_history) > 1:
-                        low, high = np.quantile(self.progress_history, q=[0.2,0.8])
-                        r = 2 * (np.clip(progress, low, high) - low) / (high - low) -1
+                    if len(self.progress_reservoir) < 100:
+                        self.progress_reservoir.append(progress)
+                        self.low_r, self.high_r = np.quantile(self.progress_reservoir, q=[0.2, 0.8])
+                    else:
+                        idx = np.random.randint(ep)
+                        if idx < 100:
+                            self.progress_reservoir[idx] = progress
+                            self.low_r, self.high_r = np.quantile(self.progress_reservoir, q=[0.2,0.8])
+                    if self.high_r != self.low_r:
+                        r = 2 * (np.clip(progress, self.low_r, self.high_r) - self.low_r) /\
+                            (self.high_r - self.low_r) -1
                     else:
                         r = np.clip(progress, -1, 1)
                     self.object_selector.update_weights(object, r)
-                    self.progress_history.append(progress)
                     for expert in self.experts.values():
                         expert.update_probs(object, r)
-
             object = self.object_selector.select()
             transitions, play_reward = self.player.play(object, self.goal_selector, self.action_selector)
             self.env_steps[object] += self.ep_env_steps
@@ -109,15 +117,14 @@ class Agent(object):
             else:
                 self.memorize(object, transitions)
 
-
-
             if ep % self.log_freq == 0 and ep > 0:
-                for evaluator in self.evaluators:
-                    evaluator.get_reward()
+                # for evaluator in self.evaluators:
+                #     evaluator.get_reward()
                 self.log()
 
     def stats(self):
-        d = {'progress': self.progress_history[-1]}
+        d = {}
+        self.time = 0
         return d
 
 

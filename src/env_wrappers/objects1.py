@@ -16,86 +16,16 @@ class Objects1(Wrapper):
     def get_r(self, s, g):
         s = s.reshape(-1, self.env.nbFeatures)[:, self.goal_idxs]
         g = g.reshape(-1, self.goal_dim)
+        # idxs = self.goal_idxs
+        # avgs = self.env.avgs[idxs]
+        # spans = self.env.spans[idxs]
+        # s = s * spans + avgs
+        # g = g * spans + avgs
         diff = s - g
         d = np.linalg.norm(diff, axis=-1)
         t = (d < 0.01)
         r = t * self.rTerm + (1 - t) * self.rNotTerm
         return r, t
-
-    # def reset(self, state):
-    #     exp = {}
-    #     exp['s0'] = np.expand_dims(state, axis=0)
-    #     exp['g'] = self.get_g()
-    #     exp['w'] = self.get_w()
-    #     return exp
-    #
-    # def get_w(self):
-    #     w = 0.01 * np.ones(self.N)
-    #     obj = np.random.randint(self.N)
-    #     w[obj] = 1
-    #     return w / sum(w)
-    #
-    # def get_g(self):
-    #     g = np.random.randint(1, self.env.L + 1, size=self.N)
-    #     # g = np.ones(self.N)
-    #     return g / self.env.L
-    #
-    # def get_r(self, s, g, w):
-    #     pos, objs = np.split(s, [2], axis=-1)
-    #     d = np.linalg.norm(np.multiply(w, objs-g), axis=-1)
-    #     t = d < 0.001
-    #     r = t * self.rTerm + (1 - t) * self.rNotTerm
-    #     return r, t
-
-    # def process_trajectory(self, trajectory):
-    #     rParams = np.expand_dims(trajectory[-1]['rParams'], axis=0)
-    #     new_trajectory = []
-    #     n_changes = 0
-
-        # Reservoir sampling for HER
-        # if self.her != 0:
-        #     virtual_idx = []
-        #     for i, exp in enumerate(reversed(trajectory)):
-        #         changes = np.where(exp['s0'][2:] != exp['s1'][2:])[0]
-        #         for change in changes:
-        #             n_changes += 1
-        #             if len(virtual_idx) < self.her:
-        #                 virtual_idx.append((i, change))
-        #             else:
-        #                 j = np.random.randint(0, n_changes)
-        #                 if j < self.her:
-        #                     virtual_idx[j] = (i, change)
-
-        # for i, exp in enumerate(reversed(trajectory)):
-        #     if i == 0:
-        #         exp['next'] = None
-        #     else:
-        #         exp['next'] = trajectory[-i]
-        #
-        #     # if self.her != 0:
-        #     #     virtual_goals = [np.hstack([trajectory[idx]['s1'], self.vs[c]]) for idx, c in virtual_idx if idx >= i]
-        #     #     exp['goal'] = np.vstack([trajectory[-1]['goal']] + virtual_goals)
-        #     # else:
-        #     #     exp['goal'] = np.expand_dims(trajectory[-1]['goal'], axis=0)
-        #
-        #     # Reservoir sampling for HER
-        #     if self.her != 0:
-        #         changes = np.where(exp['s0'][2:] != exp['s1'][2:])[0]
-        #         for change in changes:
-        #             n_changes += 1
-        #             v = self.vs[change]
-        #             if goals.shape[0] <= self.her:
-        #                 goals = np.vstack([goals, np.hstack([exp['s1'], v])])
-        #             else:
-        #                 j = np.random.randint(1, n_changes + 1)
-        #                 if j <= self.her:
-        #                     goals[j] = np.hstack([exp['s1'], v])
-        #
-        #     exp['rParams'] = rParams
-        #     # exp['reward'], exp['terminal'] = self.get_r(exp['s1'], exp['rParams'])
-        #     new_trajectory.append(exp)
-        #
-        # return new_trajectory
 
     @property
     def state_dim(self):
@@ -103,7 +33,7 @@ class Objects1(Wrapper):
 
     @property
     def goal_dim(self):
-        return 2
+        return 1
 
     @property
     def action_dim(self):
@@ -111,8 +41,4 @@ class Objects1(Wrapper):
 
     @property
     def goal_idxs(self):
-        return np.array([0, 1])
-
-    @property
-    def goal_space(self):
-        return np.array([[-0.05, 0.05], [-0.05,0.05]])
+        return np.array([2])

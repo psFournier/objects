@@ -11,16 +11,6 @@ class Obj():
         self.env = env
         self.init_val = init_val
         self.reset()
-        self.ranges = np.array([
-            [-0.1, 0.1],
-            [-0.02, 0.02],
-            [-0.07, 0.07],
-            [-0.02, 0.02],
-            [0, 1],
-            [0, 1]
-        ])
-        self.avgs = np.mean(self.ranges, axis=1)
-        self.spans = self.ranges[:, 1] - self.ranges[:, 0]
 
     def reset(self):
         self.state = np.array([0.,
@@ -40,10 +30,22 @@ class Objects4(Env):
         self.lastaction = None
         # rng = np.random.RandomState(seed)
         # self.FFN = FeedForwardNetwork(2, [4], 1, rng, 1, 0.05)
+        self.ranges = np.array([
+            [-0.1, 0.1],
+            [-0.019, 0.019],
+            [-0.07, 0.07],
+            [-0.019, 0.019],
+            [0, 1],
+            [0, 1]
+        ])
+        self.avgs = np.mean(self.ranges, axis=1)
+        self.spans = self.ranges[:, 1] - self.ranges[:, 0]
+
         self.set_objects()
 
     def set_objects(self, n=None):
-        initvals = [[0.1, 0.1], [0.5, 0.1], [0.9, 0.1], [0.5, 0.1], [0.5, 0.5], [0.5, 0.9], [0.9, 0.1], [0.9, 0.5], [0.9, 0.9]]
+        # initvals = [[0.1, 0.1], [0.5, 0.1], [0.9, 0.1], [0.5, 0.1], [0.5, 0.5], [0.5, 0.9], [0.9, 0.1], [0.9, 0.5], [0.9, 0.9]]
+        initvals = [[1,0]]
         self.nbObjects = len(initvals)
         self.objects = [Obj(self, np.array(initval)) for initval in initvals]
 
@@ -62,9 +64,9 @@ class Objects4(Env):
 
     def next_state(self, state, a):
         if a == 1:
-            state[1] = np.clip(state[1] + 0.001, -0.02, 0.02)
+            state[1] = np.clip(state[1] + 0.001, -0.019, 0.019)
         elif a == 2:
-            state[1] = np.clip(state[1] - 0.001, -0.02, 0.02)
+            state[1] = np.clip(state[1] - 0.001, -0.019, 0.019)
         newstate0 = np.clip(state[0] + state[1], -0.1, 0.1)
         if (newstate0 > state[0]  and state[0] <= state[2] and state[2] <= newstate0) \
                 or (newstate0 < state[0] and state[2] >= newstate0 and state[0] >= state[2]):
@@ -83,5 +85,5 @@ class Objects4(Env):
 
     @property
     def state(self):
-        res = np.hstack([(obj.state - obj.avgs) / obj.spans for obj in self.objects])
+        res = np.hstack([obj.state for obj in self.objects])
         return res

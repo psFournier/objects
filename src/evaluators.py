@@ -13,10 +13,10 @@ class TDerror_evaluator(object):
         states0 = np.vstack([t['s0'] for t in transitions])
         goals = np.vstack([t['g'] for t in transitions])
         actions = np.vstack([t['a0'] for t in transitions])
-        qvals = self.agent.model._qval([states0, goals, actions])[0]
         states1 = np.vstack([t['s1'] for t in transitions])
-        targetqvals = self.agent.model._targetqvals([states1, goals])[0]
         rewards, terminals = self.agent.wrapper.get_r(states1, goals)
+        qvals = self.agent.model._qval([states0, goals, actions])[0]
+        targetqvals = self.agent.model._targetqvals([states1, goals])[0]
         targetqvals = rewards + (1 - terminals) * np.max(targetqvals, axis=1)
         reward = np.sqrt(np.mean(np.square(qvals - targetqvals)))
         return reward
@@ -141,6 +141,7 @@ class Qval_evaluator(object):
         tr = self.agent.buffer.sample(200)
         states0 = np.vstack([t['s0'] for t in tr])
         goals = np.vstack([t['g'] for t in tr])
+        #Normalize
         qvals = self.agent.model._qvals([states0, goals])[0]
         eval = np.mean(qvals)
         reward = eval - self.last_eval

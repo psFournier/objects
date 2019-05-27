@@ -10,48 +10,58 @@ class Player(object):
         # self.to_reinit = np.ones(agent.env.nbObjects)
 
     def play(self, object, goal_selector, action_selector):
+
+        avgs = self.agent.env.avgs
+        spans = self.agent.env.spans
+        idxs = self.agent.wrapper.goal_idxs
+
         self.agent.env.reset()
         goal = goal_selector.select(object)
-        # print(self.name, goal)
-        transitions = [[] for o in range(self.agent.env.nbObjects)]
+        goal_norm = (goal - avgs[idxs]) / spans[idxs]
+
+        transitions = [[]]
         r = 0.
+        t = False
         episodes = 1
+
         for _ in range(self.agent.ep_env_steps):
+            if t:
+                self.agent.env.reset()
+                goal = goal_selector.select(object)
+                goal_norm = (goal - avgs[idxs]) / spans[idxs]
+                episodes += 1
+                transitions.append([])
             fullstate0 = self.agent.env.state
             states0 = [self.agent.wrapper.get_state(o, fullstate0) for o in range(self.agent.env.nbObjects)]
             state0 = states0[object]
-            # print(self.name, state0)
-            action, qvals, probs = action_selector.select(state0, goal)
+            state0_norm = (state0 - avgs) / spans
+            action, qvals, probs = action_selector.select(state0_norm, goal_norm)
             mu0 = probs[action]
             self.agent.env.step(action)
             fullstate1 = self.agent.env.state
             states1 = [self.agent.wrapper.get_state(o, fullstate1) for o in range(self.agent.env.nbObjects)]
-            for o in range(self.agent.env.nbObjects):
-                transition = {'s0': states0[o],
-                              'a0': action,
-                              's1': states1[o],
-                              'g': goal,
-                              'mu0': mu0,
-                              'object': o,
-                              'next': None}
-                transitions[o].append(transition)
-            if goal.size == self.agent.wrapper.goal_dim:
-                rs, ts = self.agent.wrapper.get_r(states1[object], goal)
-                r += rs[0]
-                # if lastqval is not None:
-                #     tderror += (lastqval - rs[0] - self.agent.model._gamma * max(qvals))**2
-                # lastqval = qvals[action]
-                if ts[0]:
-                    self.agent.env.reset()
-                    goal = goal_selector.select(object)
-                    episodes += 1
+            state1 = states1[object]
+            state1_norm = (state1 - avgs) / spans
+            rs, ts = self.agent.wrapper.get_r(state1, goal)
+            r += rs[0]
+            t = ts[0]
+            # print(goal, goal_norm, action, state1, state1_norm, rs[0], ts[0])
+            transition = {'s0': state0_norm,
+                          'a0': action,
+                          's1': state1_norm,
+                          'g': goal_norm,
+                          'mu0': mu0,
+                          'object': object,
+                          'next': None,
+                          'reward': rs[0],
+                          'terminal': t}
+            transitions[-1].append(transition)
+
 
         if self.stat_steps[object] == 0:
             self.rewards[object] = r
-            # self.tderrors[object] = tderror
         else:
             self.rewards[object] += r
-            # self.tderrors[object] += tderror
         self.stat_steps[object] += episodes
 
         return transitions, r/episodes

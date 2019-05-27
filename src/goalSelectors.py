@@ -6,10 +6,9 @@ class Uniform_goal_selector(object):
         self.name = 'random_goal'
 
     def select(self, object):
+        range = self.agent.env.ranges[self.agent.wrapper.goal_idxs, :]
         while True:
-            goal = np.random.uniform(self.agent.wrapper.goal_space[0, 0],
-                                     self.agent.wrapper.goal_space[0, 1],
-                                     self.agent.wrapper.goal_dim)
+            goal = np.random.uniform(range[:, 0], range[:, 1])
             state = self.agent.wrapper.get_state(object, self.agent.env.state)
             if not self.agent.wrapper.get_r(state, goal)[1]:
                 break

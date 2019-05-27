@@ -77,8 +77,8 @@ class State_goal_soft_action_selector(object):
         self.name = 'sgsoft_action'
 
     def select(self, state, goal):
-        input = [np.expand_dims(state, axis=0), np.expand_dims(goal, axis=0)]
-        qvals = self.agent.model._qvals(input)[0].squeeze()
+        qvals = self.agent.model._qvals([np.expand_dims(state, axis=0),
+                                         np.expand_dims(goal, axis=0)])[0].squeeze()
         self.min_max += max(qvals) - min(qvals)
         # probs = softmax(qvals, theta=0.5 + 1.5*min(1, sum(self.agent.train_steps)/10000))
         # print(state, goal)

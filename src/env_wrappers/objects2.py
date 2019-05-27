@@ -16,6 +16,11 @@ class Objects2(Wrapper):
     def get_r(self, s, g):
         s = s.reshape(-1, self.env.nbFeatures)[:, self.goal_idxs]
         g = g.reshape(-1, self.goal_dim)
+        avgs = self.env.avgs
+        spans = self.env.spans
+        idxs = self.goal_idxs
+        s = s * spans + avgs
+        g = g * spans[idxs] + avgs[idxs]
         diff = s - g
         d = np.linalg.norm(diff, axis=-1)
         t = (d < 0.01)
@@ -28,7 +33,7 @@ class Objects2(Wrapper):
 
     @property
     def goal_dim(self):
-        return 1
+        return 2
 
     @property
     def action_dim(self):
@@ -36,8 +41,4 @@ class Objects2(Wrapper):
 
     @property
     def goal_idxs(self):
-        return np.array([2])
-
-    @property
-    def goal_space(self):
-        return np.array([[-0.05, 0.05]])
+        return np.array([4, 5])

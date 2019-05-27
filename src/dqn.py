@@ -45,7 +45,6 @@ class Controller(object):
 
         self.rho = 0
         self.targets = np.zeros(agent.wrapper.env.nbObjects)
-        self.rewards = np.zeros(agent.wrapper.env.nbObjects)
         self.qvals = np.zeros(agent.wrapper.env.nbObjects)
         self.tderrors = np.zeros(agent.wrapper.env.nbObjects)
         self.stat_steps = np.zeros(agent.wrapper.env.nbObjects)
@@ -74,8 +73,7 @@ class Controller(object):
         progress = 0
         if self.agent.buffer._buffers[object]._numsamples > self.agent.batch_size:
             exps = self.agent.buffer.sample(self.agent.batch_size, object)
-            nStepExpes = self.getNStepSequences(exps)
-            nStepExpes, mean_reward = self.getQvaluesAndBootstraps(nStepExpes)
+            nStepExpes = self.getQvaluesAndBootstraps(exps)
             states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
             inputs = [states, actions, goals, targets]
             loss_before, qval_before, td_errors_before = self._train(inputs)
@@ -85,12 +83,10 @@ class Controller(object):
             self.rho += np.mean(rhos)
             if self.stat_steps[object] == 0:
                 self.targets[object] = np.mean(targets)
-                self.rewards[object] = mean_reward
                 self.tderrors[object] = np.mean(td_errors_before)
                 self.qvals[object] = np.mean(qval_before)
             else:
                 self.targets[object] += np.mean(targets)
-                self.rewards[object] += mean_reward
                 self.tderrors[object] += np.mean(td_errors_before)
                 self.qvals[object] += np.mean(qval_before)
             self.stat_steps[object] += 1
@@ -99,8 +95,9 @@ class Controller(object):
             print('not enough samples for batchsize')
         return progress
 
-    def getNStepSequences(self, exps):
-        nStepSeqs = []
+    def getQvaluesAndBootstraps(self, exps):
+
+        nStepExpes = []
         for exp in exps:
             nStepSeq = [exp]
             i = 1
@@ -108,10 +105,7 @@ class Controller(object):
                 exp = exp['next']
                 nStepSeq.append(exp)
                 i += 1
-            nStepSeqs.append(nStepSeq)
-        return nStepSeqs
-
-    def getQvaluesAndBootstraps(self, nStepExpes):
+            nStepExpes.append(nStepSeq)
 
         states, goals = [], []
         for nStepExpe in nStepExpes:
@@ -132,28 +126,28 @@ class Controller(object):
 
         states = np.vstack(states)
         goals = np.vstack(goals)
+        # rewards, terminals = self.agent.wrapper.get_r(states, goals)
+        # mean_reward = np.mean(rewards)
 
-        rewards, terminals = self.agent.wrapper.get_r(states, goals)
-        mean_reward = np.mean(rewards)
         qvals = self._qvals([states, goals])[0]
         target_qvals = self._targetqvals([states, goals])[0]
         actionProbs = softmax(qvals, axis=1, theta=1000)
 
         i = 0
         for nStepExpe in nStepExpes:
-            nStepExpe[0]['g'] = goals[i]
+            # nStepExpe[0]['g'] = goals[i]
             for exp in nStepExpe:
                 exp['q'] = qvals[i]
                 exp['tq'] = target_qvals[i]
                 exp['pi'] = actionProbs[i]
                 i += 1
-                exp['reward'] = rewards[i]
-                exp['terminal'] = terminals[i]
+                # exp['reward'] = rewards[i]
+                # exp['terminal'] = terminals[i]
             end = {'q': qvals[i], 'tq': target_qvals[i], 'pi': actionProbs[i]}
             nStepExpe.append(end)
             i += 1
 
-        return nStepExpes, mean_reward
+        return nStepExpes
 
     def getTargetsSumTD(self, nStepExpes):
         targets = []
@@ -202,19 +196,16 @@ class Controller(object):
         d = {}
         steps = sum(self.stat_steps)
         if sum(self.stat_steps) != 0:
-            d['reward'] = sum(self.rewards)/ steps
             d['tderror'] = sum(self.tderrors) / steps
             d['qval'] = sum(self.qvals) / steps
             d['target'] = sum(self.targets) / steps
             d['rho'] = self.rho / steps
         for i, s in enumerate(self.stat_steps):
             if s != 0:
-                self.rewards[i] /= s
                 self.tderrors[i] /= s
                 self.targets[i] /= s
                 self.qvals[i] /= s
             self.stat_steps[i] = 0
-        d['rewards'] = self.rewards
         d['tderrors'] = self.tderrors
         d['qvals'] = self.qvals
         d['targets'] = self.targets

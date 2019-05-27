@@ -169,7 +169,7 @@ class ReplayBuffer(object):
             raise RuntimeError
         exps = []
         for i in idxs:
-            exps.append(self._storage[i])
+            exps.append(self._storage[i].copy())
         return exps
 
     @property
