@@ -16,11 +16,6 @@ class Objects2(Wrapper):
     def get_r(self, s, g):
         s = s.reshape(-1, self.env.nbFeatures)[:, self.goal_idxs]
         g = g.reshape(-1, self.goal_dim)
-        avgs = self.env.avgs
-        spans = self.env.spans
-        idxs = self.goal_idxs
-        s = s * spans + avgs
-        g = g * spans[idxs] + avgs[idxs]
         diff = s - g
         d = np.linalg.norm(diff, axis=-1)
         t = (d < 0.01)

@@ -44,8 +44,8 @@ class Objects4(Env):
         self.set_objects()
 
     def set_objects(self, n=None):
-        # initvals = [[0.1, 0.1], [0.5, 0.1], [0.9, 0.1], [0.5, 0.1], [0.5, 0.5], [0.5, 0.9], [0.9, 0.1], [0.9, 0.5], [0.9, 0.9]]
-        initvals = [[1,0]]
+        initvals = [[0.1, 0.1], [0.5, 0.1], [0.9, 0.1], [0.5, 0.1], [0.5, 0.5], [0.5, 0.9], [0.9, 0.1], [0.9, 0.5], [0.9, 0.9]]
+        # initvals = [[1,0]]
         self.nbObjects = len(initvals)
         self.objects = [Obj(self, np.array(initval)) for initval in initvals]
 

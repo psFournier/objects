@@ -72,7 +72,7 @@ class Agent(object):
                 self.buffer.append(tr)
                 for j, idx in enumerate(her_goals_idx):
                     g = ep[idx]['s1'][self.wrapper.goal_idxs]
-                    if idx >= i and g != ep[0]['s0'][self.wrapper.goal_idxs]:
+                    if idx >= i and np.any(g != ep[0]['s0'][self.wrapper.goal_idxs]):
                         tr_her = tr.copy()
                         tr_her['g'] = g
                         self.buffer.append(tr_her)
