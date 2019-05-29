@@ -29,6 +29,13 @@ register(
     )
 
 register(
+        id='Objects1-v0',
+        entry_point='environments.objects1:Objects1',
+        kwargs={'seed': 1},
+        wrapper_entry_point='env_wrappers.objects2:Objects2'
+    )
+
+register(
         id='Objects4-v0',
         entry_point='environments.objects4:Objects4',
         kwargs={'seed': 1},

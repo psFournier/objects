@@ -17,8 +17,8 @@ class Obj():
                                0.,
                                0.,
                                0.,
-                               0.,
-                               0.,
+                               np.random.uniform(0.1*self.env.ranges[4,0], 0.1*self.env.ranges[4,1]),
+                               np.random.uniform(0.1*self.env.ranges[5,0], 0.1*self.env.ranges[5,1]),
                                0.,
                                0.,
                                self.init_val[0],
@@ -49,7 +49,7 @@ class Objects3(Env):
         self.set_objects()
 
     def set_objects(self, n=None):
-        initvals = [[0.1, 0.1], [0.9, 0.9], [0.1, 0.9], [0.9, 0.1]]
+        initvals = [[0.1, 0.1], [0.9,0.9], [0.5,0.5]]
         self.nbObjects = len(initvals)
         self.objects = [Obj(self, np.array(initval)) for initval in initvals]
 

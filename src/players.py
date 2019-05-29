@@ -11,8 +11,8 @@ class Player(object):
 
     def play(self, object, goal_selector, action_selector):
 
-        avgs = self.agent.env.avgs
-        spans = self.agent.env.spans
+        avgs = self.agent.env.objects[object].avgs
+        spans = self.agent.env.objects[object].spans
         idxs = self.agent.wrapper.goal_idxs
 
         self.agent.env.reset()
@@ -45,7 +45,7 @@ class Player(object):
             rs, ts = self.agent.wrapper.get_r(state1, goal)
             r += rs[0]
             t = ts[0]
-            # print(goal, goal_norm, action, state1, state1_norm, rs[0], ts[0])
+            print(object, goal, state1, ts[0])
             transition = {'s0': state0_norm,
                           'a0': action,
                           's1': state1_norm,

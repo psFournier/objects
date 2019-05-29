@@ -7,7 +7,7 @@ import matplotlib.cm as cm
 # dirs = ['0201', '0401', '0301', '0601', '0701', '0801', '0901', '1101', '1201', '1301', '1401']
 df = pd.concat([
     # pd.read_pickle('../log/cluster/2205bis/*.pkl'),
-    pd.read_pickle('../log/cluster/2805/*.pkl'),
+    pd.read_pickle('../log/cluster/2905/*.pkl'),
     # pd.read_pickle('../log/cluster/2305/Objects4-v0.pkl'),
 ], ignore_index=True)
 
@@ -62,15 +62,15 @@ params = [
 ]
 
 df1 = df.copy()
-df1 = df1[(df1['--env'] == 'Objects4-v0')]
+df1 = df1[(df1['--env'] == 'Objects3-v0')]
 # df1 = df1[(df1['--nstep'] == 1)]
 # df1 = df1[((df1['--objects'] == 'uni') & (df1['--exp4gamma'] == 0.3))|(df1['--objects'] == 'exp4')]
-# df1 = df1[(df1['--objects'] == 'exp4')]
+df1 = df1[(df1['--objects'] == 'uni')]
 # df1 = df1[(df1['--nbObjects'] == 1)]
 # df1 = df1[(df1['--nbObjectsTrain'] == 1)]
 # df1 = df1[(df1['--exp4gamma'] == 0.3)]
 # df1 = df1[(df1['--agentEta'] == 0.01)]
-df1 = df1[(df1['--her'] == 0)]
+# df1 = df1[(df1['--her'] == 0)]
 #
 
 # df1 = df1[(df1['--objectselector'] == 'exp4object')]
@@ -87,7 +87,7 @@ experts = ['obj_'+str(i)+'_expert' for i in range(2)]
 # y = [e+'_probs_{}'.format(i) for e in expert_probs for i in range(9)]
 # y = ['exp4_obj_weight_'+e for e in expert_probs]
 x = ['envstep']
-y = ['player_rewards_{}'.format(i) for i in range(4)] + ['trainstep']
+y = ['player_rewards_{}'.format(i) for i in range(3)] + ['trainstep']
 # y = ['player_rewards_8']
 
 paramsStudied = []

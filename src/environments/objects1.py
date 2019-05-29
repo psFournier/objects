@@ -6,34 +6,83 @@ import time
 from sklearn import svm
 from scipy.stats import norm
 
+
 class Obj():
-    def __init__(self, env):
+    def __init__(self, env, varying_feature_ranges, fixed_feature_values, fixed_feature_ranges):
         self.env = env
-        self.f1 = np.random.uniform(-0.05, 0.05)
-        self.f2 = np.random.uniform(-0.05, 0.05)
+        self.varying_feature_ranges = varying_feature_ranges
+        self.fixed_feature_ranges = fixed_feature_ranges
+        self.fixed_feature_values = fixed_feature_values
+        ranges = np.vstack([varying_feature_ranges, fixed_feature_ranges])
+        self.avgs = np.mean(ranges, axis=1)
+        self.spans = ranges[:, 1] - ranges[:, 0]
         self.reset()
 
-
     def reset(self):
-        self.state = np.array([0.,
-                               0.,
-                               self.f1,
-                               self.f2
-                               ])
+        self.state = np.hstack([np.random.uniform(self.varying_feature_ranges[:, 0],
+                                                  self.varying_feature_ranges[:, 1]),
+                                self.fixed_feature_values])
+
 
 class Objects1(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, seed=None, nbObjects=2):
-        # Object state = (obj_pos_abs, shape, color)
-        self.nbFeatures = 4
-        self.nbObjects = nbObjects
-        self.nbActions = 4
+    def __init__(self, seed=None):
+        self.nbFeatures = 6
+        self.nbActions = 5
         self.lastaction = None
-        self.objects = []
-        for i in range(self.nbObjects):
-            self.objects.append(Obj(self))
 
+        self.set_objects()
+
+    def set_objects(self, n=None):
+
+        obj1 = Obj(self,
+                   varying_feature_ranges=np.array([
+                       [-0.1, 0.1],
+                       [-0.1, 0.1],
+                       [-0.02, 0.02],
+                       [-0.02, 0.02],
+                   ]),
+                   fixed_feature_ranges=np.array([
+                       [0, 1],
+                       [0, 1]
+                   ]),
+                   fixed_feature_values=np.array(
+                       [1, 0]
+                   ))
+
+        obj2 = Obj(self,
+                   varying_feature_ranges=np.array([
+                       [-0.1, 0.1],
+                       [-0.1, 0.1],
+                       [-0.02, 0.02],
+                       [-0.02, 0.02],
+                   ]),
+                   fixed_feature_ranges=np.array([
+                       [0, 1],
+                       [0, 1]
+                   ]),
+                   fixed_feature_values=np.array(
+                       [0, 1]
+                   ))
+
+        obj3 = Obj(self,
+                   varying_feature_ranges=np.array([
+                       [-0.1, 0.1],
+                       [-0.1, 0.1],
+                       [-0.02, 0.02],
+                       [-0.02, 0.02],
+                   ]),
+                   fixed_feature_ranges=np.array([
+                       [0, 1],
+                       [0, 1]
+                   ]),
+                   fixed_feature_values=np.array(
+                       [1, 1]
+                   ))
+
+        self.objects = [obj1, obj2, obj3]
+        self.nbObjects = len(self.objects)
 
     def step(self, a):
 
@@ -46,63 +95,26 @@ class Objects1(Env):
         for object in self.objects:
             object.state = self.next_state(object.state, env_a)
 
-
         return self.state, 0, 0, {}
 
     def next_state(self, state, a):
-        if a == 0:
-            state[0] = np.clip(state[0] + 0.005, -0.05, 0.05)
-        # if a == 1:
-        #     if state[1] == 0:
-        #         state[0] = np.clip(state[0] + 0.01, -1, 1)
-        #     elif state[1] == 1:
-        #         state[0] = np.clip(state[0] + 0.05, -1, 1)
+
         if a == 1:
-            state[0] = np.clip(state[0] - 0.005, -0.05, 0.05)
-        if a == 2:
-            state[1] = np.clip(state[1] + 0.005, -0.05, 0.05)
-        if a == 3:
-            state[1] = np.clip(state[1] - 0.005, -0.05, 0.05)
-        # if a == 3:
-        #     if state[1] == 0:
-        #         state[0] = np.clip(state[0] - 0.01, -1, 1)
-        #     elif state[1] == 1:
-        #         state[0] = np.clip(state[0] - 0.05, -1, 1)
+            state[2] = np.clip(state[2] + 0.001 * state[4], -0.02, 0.02)
+            state[3] = 0
+        elif a == 2:
+            state[2] = np.clip(state[2] - 0.001 * state[4], -0.02, 0.02)
+            state[3] = 0
+        elif a == 3:
+            state[3] = np.clip(state[3] + 0.001 * state[5], -0.02, 0.02)
+            state[2] = 0
+        elif a == 4:
+            state[3] = np.clip(state[3] - 0.001 * state[5], -0.02, 0.02)
+            state[2] = 0
+        state[0] = np.clip(state[0] + state[2], -0.1, 0.1)
+        state[1] = np.clip(state[1] + state[3], -0.1, 0.1)
+
         return state
-
-
-    # def next_state(self, state, a):
-    #     abs_pos = self.agent_pos + state[:2]
-    #     if a == 0:
-    #         self.agent_pos[0] = np.clip(self.agent_pos[0] + .1, -1, 1)
-    #         if state[0] < 0.1 and state[0] > 0 and np.abs(state[1]) < 0.05:
-    #             if state[2] == 0:
-    #                 abs_pos[0] = np.clip(abs_pos[0] + .4, -1, 1)
-    #             elif state[2] == 1:
-    #                 abs_pos[0] = np.clip(abs_pos[0] + .1, -1, 1)
-    #     if a == 1:
-    #         self.agent_pos[0] = np.clip(self.agent_pos[0] - .1, -1, 1)
-    #         if state[0] > -0.1 and state[0] < 0 and np.abs(state[1]) < 0.05:
-    #             if state[2] == 0:
-    #                 abs_pos[0] = np.clip(abs_pos[0] - .4, -1, 1)
-    #             elif state[2] == 1:
-    #                 abs_pos[0] = np.clip(abs_pos[0] - .1, -1, 1)
-    #     if a == 2:
-    #         self.agent_pos[1] = np.clip(self.agent_pos[1] + .1, -1, 1)
-    #         if state[1] < 0.1 and state[1] > 0 and np.abs(state[0]) < 0.05:
-    #             if state[2] == 0:
-    #                 abs_pos[1] = np.clip(abs_pos[1] + .4, -1, 1)
-    #             elif state[2] == 1:
-    #                 abs_pos[1] = np.clip(abs_pos[1] + .1, -1, 1)
-    #     if a == 3:
-    #         self.agent_pos[1] = np.clip(self.agent_pos[1] - .1, -1, 1)
-    #         if state[1] > -0.1 and state[1] < 0 and np.abs(state[0]) < 0.05:
-    #             if state[2] == 0:
-    #                 abs_pos[1] = np.clip(abs_pos[1] - .4, -1, 1)
-    #             elif state[2] == 1:
-    #                 abs_pos[1] = np.clip(abs_pos[1] - .1, -1, 1)
-    #     state[:2] = abs_pos - self.agent_pos
-    #     return state
 
     def reset(self):
         for object in self.objects:

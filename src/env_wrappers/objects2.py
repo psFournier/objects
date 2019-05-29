@@ -36,4 +36,4 @@ class Objects2(Wrapper):
 
     @property
     def goal_idxs(self):
-        return np.array([4, 5])
+        return np.array([0, 1])
