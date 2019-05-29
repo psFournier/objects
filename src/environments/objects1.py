@@ -19,8 +19,9 @@ class Obj():
         self.reset()
 
     def reset(self):
-        self.state = np.hstack([np.random.uniform(self.varying_feature_ranges[:, 0],
-                                                  self.varying_feature_ranges[:, 1]),
+        self.state = np.hstack([np.random.uniform(self.varying_feature_ranges[:2, 0],
+                                                  self.varying_feature_ranges[:2, 1]),
+                                np.zeros(2),
                                 self.fixed_feature_values])
 
 
@@ -38,8 +39,8 @@ class Objects1(Env):
 
         obj1 = Obj(self,
                    varying_feature_ranges=np.array([
-                       [-0.1, 0.1],
-                       [-0.1, 0.1],
+                       [-0.05, 0.05],
+                       [-0.05, 0.05],
                        [-0.02, 0.02],
                        [-0.02, 0.02],
                    ]),
@@ -53,8 +54,8 @@ class Objects1(Env):
 
         obj2 = Obj(self,
                    varying_feature_ranges=np.array([
-                       [-0.1, 0.1],
-                       [-0.1, 0.1],
+                       [-0.05, 0.05],
+                       [-0.05, 0.05],
                        [-0.02, 0.02],
                        [-0.02, 0.02],
                    ]),
@@ -68,8 +69,8 @@ class Objects1(Env):
 
         obj3 = Obj(self,
                    varying_feature_ranges=np.array([
-                       [-0.1, 0.1],
-                       [-0.1, 0.1],
+                       [-0.05, 0.05],
+                       [-0.05, 0.05],
                        [-0.02, 0.02],
                        [-0.02, 0.02],
                    ]),

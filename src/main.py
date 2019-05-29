@@ -26,7 +26,7 @@ Usage:
 Options:
   --log_dir DIR            Logging directory [default: /home/pierre/PycharmProjects/objects/log/local/]
   --initq VAL              [default: -100]
-  --layers VAL             [default: 8,8]
+  --layers VAL             [default: 32,32]
   --her VAL                [default: 0]
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]

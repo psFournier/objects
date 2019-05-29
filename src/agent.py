@@ -60,7 +60,7 @@ class Agent(object):
     def memorize_her(self, object, transitions):
         for ep in transitions:
             length = len(ep)
-            nb_her_samples = min(3, length - 1)
+            nb_her_samples = min(self.her-1, length - 1)
             her_goals_idx = np.random.choice(length - 1, nb_her_samples, replace=False)
             her_goals_idx= np.append(her_goals_idx, length - 1)
             for i, tr in enumerate(ep):
@@ -112,7 +112,7 @@ class Agent(object):
             object = self.object_selector.select()
             transitions, play_reward = self.player.play(object, self.goal_selector, self.action_selector)
             self.env_steps[object] += self.ep_env_steps
-            if self.her == 1:
+            if self.her != 0:
                 self.memorize_her(object, transitions)
             else:
                 self.memorize(object, transitions)
