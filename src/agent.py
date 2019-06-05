@@ -103,7 +103,7 @@ class Agent(object):
                             self.low_r, self.high_r = np.quantile(self.progress_reservoir, q=[0.2,0.8])
                     if self.high_r != self.low_r:
                         r = 2 * (np.clip(progress, self.low_r, self.high_r) - self.low_r) /\
-                            (self.high_r - self.low_r) -1
+                            (self.high_r - self.low_r) - 1
                     else:
                         r = np.clip(progress, -1, 1)
                     self.object_selector.update_weights(object, r)

@@ -18,7 +18,7 @@ class Objects2(Wrapper):
         g = g.reshape(-1, self.goal_dim)
         diff = s - g
         d = np.linalg.norm(diff, axis=-1)
-        t = (d < 0.01)
+        t = (d < 0.02)
         r = t * self.rTerm + (1 - t) * self.rNotTerm
         return r, t
 

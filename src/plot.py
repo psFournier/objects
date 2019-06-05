@@ -7,7 +7,7 @@ import matplotlib.cm as cm
 # dirs = ['0201', '0401', '0301', '0601', '0701', '0801', '0901', '1101', '1201', '1301', '1401']
 df = pd.concat([
     # pd.read_pickle('../log/cluster/2205bis/*.pkl'),
-    pd.read_pickle('../log/cluster/2905/*.pkl'),
+    pd.read_pickle('../log/cluster/0506/*.pkl'),
     # pd.read_pickle('../log/cluster/2305/Objects4-v0.pkl'),
 ], ignore_index=True)
 
@@ -59,17 +59,18 @@ params = [
     '--agentEta',
     '--globalEval',
     '--episodeSteps',
+    '--env'
 ]
 
 df1 = df.copy()
-df1 = df1[(df1['--env'] == 'Objects3-v0')]
+# df1 = df1[(df1['--env'] == 'Objects3-v0')]
 # df1 = df1[(df1['--nstep'] == 1)]
 # df1 = df1[((df1['--objects'] == 'uni') & (df1['--exp4gamma'] == 0.3))|(df1['--objects'] == 'exp4')]
-df1 = df1[(df1['--objects'] == 'uni')]
+# df1 = df1[(df1['--objects'] == 'uni')]
 # df1 = df1[(df1['--nbObjects'] == 1)]
-# df1 = df1[(df1['--nbObjectsTrain'] == 1)]
-# df1 = df1[(df1['--exp4gamma'] == 0.3)]
-# df1 = df1[(df1['--agentEta'] == 0.01)]
+# df1 = df1[(df1['--expgamma'] != 0.01)&(df1['--expgamma'] != 0.5)]
+df1 = df1[(df1['--layers'] == '64,64')]
+# df1 = df1[(df1['--initq'] == 0)]
 # df1 = df1[(df1['--her'] == 0)]
 #
 
@@ -83,11 +84,11 @@ df1 = df1[(df1['--objects'] == 'uni')]
 #                  'lp_0.01_0.1_50_expert', 'lp_0.01_1_50_expert',
 #                  'lp_0.01_5_50_expert', 'lp_0.1_0.1_50_expert',
 #                  'lp_0.1_1_50_expert', 'lp_0.1_5_50_expert']
-experts = ['obj_'+str(i)+'_expert' for i in range(2)]
+# experts = ['obj_'+str(i)+'_expert' for i in range(2)]
 # y = [e+'_probs_{}'.format(i) for e in expert_probs for i in range(9)]
 # y = ['exp4_obj_weight_'+e for e in expert_probs]
 x = ['envstep']
-y = ['player_rewards_{}'.format(i) for i in range(3)] + ['trainstep']
+y = ['player_rewards_{}'.format(i) for i in range(10)] + ['player_rewards', 'trainstep']
 # y = ['player_rewards_8']
 
 paramsStudied = []
@@ -103,7 +104,7 @@ array_columns = ['dqn_model_qvals',
                  'dqn_model_tderrors', 'envsteps',
                  'test_ep_eval_rewards',
                  'train_ep_eval_rewards', 'trainsteps','player_rewards']
-array_columns += [e+'_probs' for e in experts]
+# array_columns += [e+'_probs' for e in experts]
 
 def array_to_vals(x):
     res = []
@@ -111,13 +112,15 @@ def array_to_vals(x):
         res.append(x)
     else:
         res+=list(x['__ndarray__'][::-1])
+        res.append(np.mean(x['__ndarray__']))
     return res
 
 for column in array_columns:
     temp = list(zip(*df1[column].map(array_to_vals)))
-    for i, l in enumerate(temp):
+    for i, l in enumerate(temp[:-1]):
         df1[column+'_{}'.format(i)] = l
-    df1.drop(column, axis=1)
+    df1[column] = temp[-1]
+    # df1.drop(column, axis=1)
 
 op_dict = {a:[np.median, np.mean, np.std, quant_inf, quant_sup] for a in y}
 avg = 1
@@ -125,7 +128,7 @@ if avg:
     df1 = df1.groupby(x + params).agg(op_dict).reset_index()
 
 print(paramsStudied)
-a, b = 2,2
+a, b = 3,4
 
 fig2, ax2 = plt.subplots(a, b, figsize=(18,10), squeeze=False, sharey=False, sharex=True)
 p = 'num_run'
@@ -161,7 +164,7 @@ for j, (name, g) in enumerate(df1.groupby(p)):
         # title = experts[i]
         ax2[xplot, yplot].set_title(label=valy)
         # if i == 0: ax2[xplot, yplot].legend()
-        # ax2[xplot, yplot].set_xlim([0, 25000])
+        # ax2[xplot, yplot].set_xlim([0, 100000])
         # ax2[xplot, yplot].set_ylim([0, 0.01])
         ax2[xplot,yplot].legend()
 

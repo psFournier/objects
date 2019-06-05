@@ -29,60 +29,35 @@ class Objects1(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
     def __init__(self, seed=None):
-        self.nbFeatures = 6
+        self.nbFeatures = 9
         self.nbActions = 5
         self.lastaction = None
 
         self.set_objects()
 
-    def set_objects(self, n=None):
-
-        obj1 = Obj(self,
-                   varying_feature_ranges=np.array([
-                       [-0.05, 0.05],
-                       [-0.05, 0.05],
-                       [-0.02, 0.02],
-                       [-0.02, 0.02],
-                   ]),
-                   fixed_feature_ranges=np.array([
-                       [0, 1],
-                       [0, 1]
-                   ]),
-                   fixed_feature_values=np.array(
-                       [1, 0]
-                   ))
-
-        obj2 = Obj(self,
-                   varying_feature_ranges=np.array([
-                       [-0.05, 0.05],
-                       [-0.05, 0.05],
-                       [-0.02, 0.02],
-                       [-0.02, 0.02],
-                   ]),
-                   fixed_feature_ranges=np.array([
-                       [0, 1],
-                       [0, 1]
-                   ]),
-                   fixed_feature_values=np.array(
-                       [0, 1]
-                   ))
-
-        obj3 = Obj(self,
-                   varying_feature_ranges=np.array([
-                       [-0.05, 0.05],
-                       [-0.05, 0.05],
-                       [-0.02, 0.02],
-                       [-0.02, 0.02],
-                   ]),
-                   fixed_feature_ranges=np.array([
-                       [0, 1],
-                       [0, 1]
-                   ]),
-                   fixed_feature_values=np.array(
-                       [1, 1]
-                   ))
-
-        self.objects = [obj1, obj2, obj3]
+    def set_objects(self, n=0):
+        self.objects = []
+        fixed_feature_values = np.array([0.2, 0.4, 0.7, 0.9])
+        for i in range(10):
+            vals = np.append(fixed_feature_values, i/20)
+            self.objects.append(
+                Obj(self,
+                    varying_feature_ranges=np.array([
+                        [-0.05, 0.05],
+                        [-0.05, 0.05],
+                        [-0.02, 0.02],
+                        [-0.02, 0.02],
+                    ]),
+                    fixed_feature_ranges=np.array([
+                        [0, 1],
+                        [0, 1],
+                        [0, 1],
+                        [0, 1],
+                        [0, 1]
+                    ]),
+                    fixed_feature_values=vals
+                    )
+            )
         self.nbObjects = len(self.objects)
 
     def step(self, a):
@@ -100,18 +75,21 @@ class Objects1(Env):
 
     def next_state(self, state, a):
 
+        if self.lastaction is not None and np.random.rand() < state[8]:
+            a = self.lastaction
+
         if a == 1:
             state[2] = np.clip(state[2] + 0.001 * state[4], -0.02, 0.02)
-            state[3] = 0
+            state[3] = state[3] * state[7]
         elif a == 2:
             state[2] = np.clip(state[2] - 0.001 * state[4], -0.02, 0.02)
-            state[3] = 0
+            state[3] = state[3] * state[7]
         elif a == 3:
             state[3] = np.clip(state[3] + 0.001 * state[5], -0.02, 0.02)
-            state[2] = 0
+            state[2] = state[2] * state[6]
         elif a == 4:
             state[3] = np.clip(state[3] - 0.001 * state[5], -0.02, 0.02)
-            state[2] = 0
+            state[2] = state[2] * state[6]
         state[0] = np.clip(state[0] + state[2], -0.1, 0.1)
         state[1] = np.clip(state[1] + state[3], -0.1, 0.1)
 

@@ -78,7 +78,7 @@ class Controller(object):
             inputs = [states, actions, goals, targets]
             loss_before, qval_before, td_errors_before = self._train(inputs)
             loss_after, qval_after, td_errors_after = self._test(inputs)
-            progress = loss_after - loss_before
+            progress = np.abs(np.mean(qval_after) - np.mean(qval_before))
             self.target_train()
             self.rho += np.mean(rhos)
             if self.stat_steps[object] == 0:
@@ -126,6 +126,7 @@ class Controller(object):
 
         states = np.vstack(states)
         goals = np.vstack(goals)
+        ## Beware: states and goals here are normalized, so the reward cannot be computed directly
         # rewards, terminals = self.agent.wrapper.get_r(states, goals)
         # mean_reward = np.mean(rewards)
 

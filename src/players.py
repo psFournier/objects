@@ -42,10 +42,10 @@ class Player(object):
             states1 = [self.agent.wrapper.get_state(o, fullstate1) for o in range(self.agent.env.nbObjects)]
             state1 = states1[object]
             state1_norm = (state1 - avgs) / spans
-            rs, ts = self.agent.wrapper.get_r(state1, goal)
+            rs, ts = self.agent.wrapper.get_r(state1_norm, goal_norm)
             r += rs[0]
             t = ts[0]
-            print(object, goal, state1, ts[0])
+            # print(object, goal, state1, ts[0])
             transition = {'s0': state0_norm,
                           'a0': action,
                           's1': state1_norm,
