@@ -4,7 +4,7 @@ from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_s
 from actionSelectors import Random_action_selector
 import time
 
-class Agent():
+class AgentOff():
     def __init__(self, args, env, wrapper, loggers):
         self.env = env
         self.wrapper = wrapper

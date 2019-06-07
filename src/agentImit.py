@@ -3,8 +3,9 @@ from prioritizedReplayBuffer import ReplayBuffer
 from goalSelectors import Uniform_goal_selector, Buffer_goal_selector, No_goal_selector
 from actionSelectors import Random_action_selector
 import time
+from exp4 import Uniform_object_selector
 
-class Agent():
+class AgentImit():
     def __init__(self, args, env, wrapper, loggers):
         self.env = env
         self.wrapper = wrapper
@@ -88,6 +89,17 @@ class Agent():
 
     def learn(self):
 
+        fillingGoalSelector = No_goal_selector(self)
+        fillingActionSelector = Random_action_selector(self)
+        fillingObjectSelector = Uniform_object_selector(self)
+        for ep in range(500):
+            obj = self.env.objects[fillingObjectSelector.select()]
+            transitions, play_reward = self.player.play(obj, fillingGoalSelector, fillingActionSelector)
+            if self.her != 0:
+                self.memorize_her(transitions)
+            else:
+                raise RuntimeError
+
         for ep in range(self.episodes):
 
             if sum(self.env_steps) > 10000:
@@ -97,27 +109,6 @@ class Agent():
                     if exps:
                         loss_train_before, qval_train_before = self.model.train(exps, obj.nb)
                         self.train_steps[obj.nb] += 1
-
-                obj_reward = self.evaluator.get_reward()
-                progress = obj_reward - self.last_obj_reward
-                self.last_obj_reward = obj_reward
-                if len(self.progress_reservoir) < 100:
-                    self.progress_reservoir.append(progress)
-                    self.low_progress, self.high_progress = np.quantile(self.progress_reservoir, q=[0.2, 0.8])
-                else:
-                    idx = np.random.randint(ep)
-                    if idx < 100:
-                        self.progress_reservoir[idx] = progress
-                        self.low_progress, self.high_progress = np.quantile(self.progress_reservoir, q=[0.2,0.8])
-                if self.high_progress != self.low_progress:
-                    progress = 2 * (np.clip(progress, self.low_progress, self.high_progress) - self.low_progress) /\
-                        (self.high_progress - self.low_progress) - 1
-                else:
-                    progress = np.clip(progress, -1, 1)
-
-                self.object_selector.update_weights(obj.nb, progress)
-                    # for expert in self.experts.values():
-                    #     expert.update_probs(obj.nb, progress)
 
             obj = self.env.objects[self.object_selector.select()]
             transitions, play_reward = self.player.play(obj, self.goal_selector, self.action_selector)

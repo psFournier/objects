@@ -2,9 +2,9 @@ import glob
 import pandas as pd
 import os
 
-DIR = '../log/cluster/0506'
+DIR = '../log/local/ObjectsForGeneralization2-v0'
 ENV = '*'
-runs = glob.glob(os.path.join(DIR, ENV, '*'))
+runs = glob.glob(os.path.join(DIR, '*'))
 frames = []
 
 for run in runs:
@@ -14,7 +14,8 @@ for run in runs:
         df = pd.read_json(os.path.join(run, 'progress.json'), lines=True)
         config = pd.concat([config] * df.shape[0], ignore_index=True)
         data = pd.concat([df, config], axis=1)
-        data['num_run'] = run.split('/')[5]
+        print(run.split('/'))
+        data['num_run'] = run.split('/')[4]
         frames.append(data)
     except:
         print(run, 'not ok')

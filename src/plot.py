@@ -7,7 +7,7 @@ import matplotlib.cm as cm
 # dirs = ['0201', '0401', '0301', '0601', '0701', '0801', '0901', '1101', '1201', '1301', '1401']
 df = pd.concat([
     # pd.read_pickle('../log/cluster/2205bis/*.pkl'),
-    pd.read_pickle('../log/cluster/0506/*.pkl'),
+    pd.read_pickle('../log/local/ObjectsForGeneralization2-v0/*.pkl'),
     # pd.read_pickle('../log/cluster/2305/Objects4-v0.pkl'),
 ], ignore_index=True)
 
@@ -63,15 +63,15 @@ params = [
 ]
 
 df1 = df.copy()
-# df1 = df1[(df1['--env'] == 'Objects3-v0')]
+df1 = df1[(df1['--env'] == 'ObjectsForGeneralization2-v0')]
 # df1 = df1[(df1['--nstep'] == 1)]
 # df1 = df1[((df1['--objects'] == 'uni') & (df1['--exp4gamma'] == 0.3))|(df1['--objects'] == 'exp4')]
 # df1 = df1[(df1['--objects'] == 'uni')]
 # df1 = df1[(df1['--nbObjects'] == 1)]
-# df1 = df1[(df1['--expgamma'] != 0.01)&(df1['--expgamma'] != 0.5)]
+# df1 = df1[(df1['--expgamma'] != 0.1)]
 df1 = df1[(df1['--layers'] == '64,64')]
 # df1 = df1[(df1['--initq'] == 0)]
-# df1 = df1[(df1['--her'] == 0)]
+df1 = df1[(df1['--her'] == 4)]
 #
 
 # df1 = df1[(df1['--objectselector'] == 'exp4object')]
@@ -88,7 +88,8 @@ df1 = df1[(df1['--layers'] == '64,64')]
 # y = [e+'_probs_{}'.format(i) for e in expert_probs for i in range(9)]
 # y = ['exp4_obj_weight_'+e for e in expert_probs]
 x = ['envstep']
-y = ['player_rewards_{}'.format(i) for i in range(10)] + ['player_rewards', 'trainstep']
+# y = ['trainsteps_{}'.format(i) for i in [0,1,2,3,4,5,6,7,8,28]] + ['trainstep']
+y = ['test_gene_all_eval_rewards_48', 'player_rewards'] + ['trainstep']
 # y = ['player_rewards_8']
 
 paramsStudied = []
@@ -99,11 +100,7 @@ for param in params:
         paramsStudied.append(param)
 print(df1['num_run'].unique())
 
-array_columns = ['dqn_model_qvals',
-                 'dqn_model_targets',
-                 'dqn_model_tderrors', 'envsteps',
-                 'test_ep_eval_rewards',
-                 'train_ep_eval_rewards', 'trainsteps','player_rewards']
+array_columns = ['dqn_model_qvals', 'envsteps','trainsteps','player_rewards', 'test_gene_all_eval_rewards']
 # array_columns += [e+'_probs' for e in experts]
 
 def array_to_vals(x):
@@ -111,7 +108,7 @@ def array_to_vals(x):
     if np.isscalar(x):
         res.append(x)
     else:
-        res+=list(x['__ndarray__'][::-1])
+        res+=list(x['__ndarray__'])
         res.append(np.mean(x['__ndarray__']))
     return res
 
@@ -128,7 +125,7 @@ if avg:
     df1 = df1.groupby(x + params).agg(op_dict).reset_index()
 
 print(paramsStudied)
-a, b = 3,4
+a, b = 1,2
 
 fig2, ax2 = plt.subplots(a, b, figsize=(18,10), squeeze=False, sharey=False, sharex=True)
 p = 'num_run'
@@ -156,10 +153,15 @@ for j, (name, g) in enumerate(df1.groupby(p)):
         # ax2[xplot,yplot].plot(g['trainstep'], g[valy], label=name, c=colors[j%9])
         # l = valy
         l = j%4
-        ax2[xplot,yplot].plot(g['trainstep']['mean'], g[valy]['median'].rolling(5).mean(), label=name, c=colors[j%9])
-        ax2[xplot,yplot].fill_between(g['trainstep']['mean'],
-                                g[valy]['quant_inf'].rolling(5).mean(),
-                                g[valy]['quant_sup'].rolling(5).mean(), alpha=0.25, linewidth=0, color=colors[j%9])
+        ax2[xplot,yplot].plot(g['trainstep']['mean'], g[valy]['mean'].rolling(5).mean(), label=name, c=colors[j%9])
+        # ax2[xplot,yplot].fill_between(g['trainstep']['mean'],
+        #                         g[valy]['quant_inf'].rolling(5).mean(),
+        #                         g[valy]['quant_sup'].rolling(5).mean(), alpha=0.25, linewidth=0, color=colors[j%9])7
+
+        ax2[xplot, yplot].fill_between(g['trainstep']['mean'],
+                                       (g[valy]['mean'] - 0.5*g[valy]['std']).rolling(5).mean(),
+                                       (g[valy]['mean'] + 0.5*g[valy]['std']).rolling(5).mean(), alpha=0.25, linewidth=0,
+                                       color=colors[j % 9])
         # ax2[i % a, i // a].scatter(g['train_step'], g[valy], s=1)
         # title = experts[i]
         ax2[xplot, yplot].set_title(label=valy)

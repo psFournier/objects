@@ -161,12 +161,13 @@ class ReplayBuffer(object):
         self._next_idx = (self._next_idx + 1) % self._limit
 
     def sample(self, batchsize, object=None):
+        idxs = []
         if object is None:
-            idxs = [np.random.randint(0, len(self._storage) - 1) for _ in range(batchsize)]
-        elif self._buffers[object]._numsamples >= batchsize:
-            idxs = self._buffers[object].sample(batchsize)
+            if len(self._storage) >= batchsize:
+                idxs = [np.random.randint(0, len(self._storage) - 1) for _ in range(batchsize)]
         else:
-            raise RuntimeError
+            if self._buffers[object]._numsamples >= batchsize:
+                idxs = self._buffers[object].sample(batchsize)
         exps = []
         for i in idxs:
             exps.append(self._storage[i].copy())

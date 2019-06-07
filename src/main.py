@@ -13,9 +13,11 @@ from actionSelectors import Random_action_selector, State_goal_soft_action_selec
 from utils import softmax
 from env_wrappers.registration import register
 from agent import Agent
+from agentImit import AgentImit
+from agentOff import AgentOff
 from exp4 import EXP4, Uniform_object_selector, EXP3
 from experts import Reached_states_variance_maximizer_expert, Uniform_expert, LP_expert, Object_expert
-from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator
+from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator, Test_generalisation_one_evaluator, Test_generalisation_all_evaluator
 from players import Player
 
 help = """
@@ -33,8 +35,8 @@ Options:
   --IS VAL                 [default: no]
   --targetClip VAL         [default: 0]
   --lambda VAL             [default: 0]
-  --nbObjects VAL          [default: 1]
-  --evaluator VAL          [default: approxglobal]
+  --nbObjects VAL          [default: 10]
+  --evaluator VAL          [default: geneone]
   --objects VAL            [default: uni]
   --expgamma VAL          [default: 0.1]
   --expbeta VAL           [default: 5]
@@ -105,11 +107,10 @@ if __name__ == '__main__':
         's': State_action_selector,
         'eg': Epsilon_greedy_action_selector
     }
-    # Careful with the exploration in the action selector
-    evaluators = [
-        Test_episode_evaluator(agent),
-        Train_episode_evaluator(agent)
-    ]
+    evaluators = {
+        'geneone': Test_generalisation_one_evaluator,
+        'geneall': Test_generalisation_all_evaluator
+    }
     object_selectors = {
         'exp4': EXP4,
         'uni': Uniform_object_selector,
@@ -123,6 +124,6 @@ if __name__ == '__main__':
     agent.goal_selector = goal_selectors[args['--goals']](agent)
     agent.action_selector = action_selectors[args['--actions']](agent)
     agent.player = Player(agent)
-    agent.evaluators = evaluators
+    agent.evaluator = evaluators[args['--evaluator']](agent)
     agent.global_evaluator = global_evaluators[args['--globalEval']](agent)
     agent.learn()

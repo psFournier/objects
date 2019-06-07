@@ -1,8 +1,9 @@
 import numpy as np
 from actionSelectors import State_goal_max_action_selector
 from players import Player
+from environments.objectsForGeneralization import Obj
 
-class TDerror_evaluator(object):
+class TDerror_evaluator():
     def __init__(self, agent):
         self.agent = agent
         self.name = 'tderror_eval'
@@ -21,11 +22,79 @@ class TDerror_evaluator(object):
         reward = np.sqrt(np.mean(np.square(qvals - targetqvals)))
         return reward
 
-class Test_episode_evaluator(object):
+class Test_generalisation_one_evaluator():
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'test_gene_one_eval'
+        self.action_selector = State_goal_max_action_selector(agent)
+        self.player = Player(agent)
+
+    def get_reward(self):
+        reward = 0
+        nbep = 1
+        # Beware : here using Obj from another env def
+        for _ in range(nbep):
+            obj = Obj(self.agent.env,
+                      self.agent.env.nbObjects,
+                      self.agent.env.fixed_feature_ranges[:, 1])
+            _, r = self.player.play(obj, self.agent.goal_selector, self.action_selector)
+            reward += r
+        reward /= nbep
+        return reward
+
+    def stats(self):
+        return self.player.stats()
+
+class Test_generalisation_all_evaluator():
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'test_gene_all_eval'
+        self.action_selector = State_goal_max_action_selector(agent)
+        self.player = Player(agent)
+
+    def get_reward(self):
+        reward = 0
+        nbep = 5
+        for i in range(nbep):
+            obj = Obj(self.agent.env,
+                      self.agent.env.nbObjects,
+                      np.random.uniform(low=self.agent.env.fixed_feature_ranges[:, 0],
+                                        high=self.agent.env.fixed_feature_ranges[:, 1]))
+            _, r = self.player.play(obj, self.agent.goal_selector, self.action_selector)
+            reward += r
+        reward /= nbep
+        return reward
+
+    def stats(self):
+        return self.player.stats()
+
+class qval_evaluator():
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'qval_eval'
+        self.action_selector = State_goal_max_action_selector(agent)
+        self.player = Player(agent)
+
+    def get_reward(self):
+        reward = 0
+        nbep = 1
+        for _ in range(nbep):
+            obj = Obj(self.agent.env,
+                      self.agent.env.nbObjects,
+                      np.random.uniform(low=self.agent.env.fixed_feature_ranges[:, 0],
+                                        high=self.agent.env.fixed_feature_ranges[:,1]))
+            _, r = self.player.play(obj, self.agent.goal_selector, self.action_selector)
+            reward += r
+        reward /= nbep
+        return reward
+
+    def stats(self):
+        return self.player.stats()
+
+class Test_episode_evaluator():
     def __init__(self, agent):
         self.agent = agent
         self.name = 'test_ep_eval'
-        self.reward = 0
         self.action_selector = State_goal_max_action_selector(agent)
         self.player = Player(agent)
 

@@ -1,19 +1,17 @@
 import numpy as np
 
-class Uniform_goal_selector(object):
+class Uniform_goal_selector():
     def __init__(self, agent):
         self.agent = agent
         self.name = 'random_goal'
 
-    def select(self, object):
-        obj = self.agent.env.objects[object]
-        state = self.agent.wrapper.get_state(object, self.agent.env.state)
-        ranges = obj.varying_feature_ranges[self.agent.wrapper.goal_idxs, :]
+    def select(self, obj):
+        state = obj.state
+        ranges = obj.env.varying_feature_ranges[self.agent.wrapper.goal_idxs, :]
         fixed = obj.fixed_feature_values
         while True:
             goal = np.hstack([
-                np.random.uniform(ranges[i, 0], ranges[i, 1]) if fixed[i] != 0 else state[i]
-                for i in self.agent.wrapper.goal_idxs
+                np.random.uniform(ranges[i, 0], ranges[i, 1]) for i in self.agent.wrapper.goal_idxs
             ])
             if not self.agent.wrapper.get_r(state, goal)[1]:
                 break

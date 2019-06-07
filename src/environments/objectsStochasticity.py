@@ -25,7 +25,7 @@ class Obj():
                                 self.fixed_feature_values])
 
 
-class Objects1(Env):
+class ObjectsStochastic(Env):
     metadata = {'render.modes': ['human', 'ansi']}
 
     def __init__(self, seed=None):

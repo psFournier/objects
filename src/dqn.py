@@ -34,8 +34,8 @@ class Controller(object):
         updates = Adam(lr=0.001).get_updates(loss, self.model.trainable_weights)
         self._qvals = K.function(inputs=[S, G], outputs=[qvals], updates=None)
         self._qval = K.function(inputs=[S, G, A], outputs=[qval], updates=None)
-        self._train = K.function([S, G, A, targets], [loss, qval, td_errors], updates=updates)
-        self._test = K.function([S, G, A, targets], [loss, qval, td_errors], updates=None)
+        self._train = K.function([S, G, A, targets], [loss, qval], updates=updates)
+        self._test = K.function([S, G, A, targets], [loss, qval], updates=None)
 
         S_target, G_target = Input(shape=(agent.wrapper.state_dim,)), Input(shape=(agent.wrapper.goal_dim,))
         targetQvals = self.create_network(S_target, G_target, agent.wrapper.action_dim, dropout, l2reg)
@@ -43,10 +43,8 @@ class Controller(object):
         self.targetmodel = Model([S_target, G_target], targetQvals)
         self._targetqvals = K.function(inputs=[S_target, G_target], outputs=[targetQvals], updates=None)
 
-        self.rho = 0
-        self.targets = np.zeros(agent.wrapper.env.nbObjects)
+        # self.rho = 0
         self.qvals = np.zeros(agent.wrapper.env.nbObjects)
-        self.tderrors = np.zeros(agent.wrapper.env.nbObjects)
         self.stat_steps = np.zeros(agent.wrapper.env.nbObjects)
 
     def target_train(self):
@@ -69,31 +67,21 @@ class Controller(object):
                          )(h)
         return Q_values
 
-    def train(self, object):
-        progress = 0
-        if self.agent.buffer._buffers[object]._numsamples > self.agent.batch_size:
-            exps = self.agent.buffer.sample(self.agent.batch_size, object)
-            nStepExpes = self.getQvaluesAndBootstraps(exps)
-            states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
-            inputs = [states, actions, goals, targets]
-            loss_before, qval_before, td_errors_before = self._train(inputs)
-            loss_after, qval_after, td_errors_after = self._test(inputs)
-            progress = np.abs(np.mean(qval_after) - np.mean(qval_before))
-            self.target_train()
-            self.rho += np.mean(rhos)
-            if self.stat_steps[object] == 0:
-                self.targets[object] = np.mean(targets)
-                self.tderrors[object] = np.mean(td_errors_before)
-                self.qvals[object] = np.mean(qval_before)
-            else:
-                self.targets[object] += np.mean(targets)
-                self.tderrors[object] += np.mean(td_errors_before)
-                self.qvals[object] += np.mean(qval_before)
-            self.stat_steps[object] += 1
-            self.agent.train_steps[object] += 1
+    def train(self, exps, obj_nb):
+        nStepExpes = self.getQvaluesAndBootstraps(exps)
+        states, actions, goals, targets, rhos = self.getTargetsSumTD(nStepExpes)
+        inputs = [states, actions, goals, targets]
+        # Beware: loss is scalar, qval and tderrors are vectors
+        loss_train_before, qval_train_before = self._train(inputs)
+        self.target_train()
+        # self.rho += np.mean(rhos)
+        # TODO
+        if self.stat_steps[obj_nb] == 0:
+            self.qvals[obj_nb] = np.mean(qval_train_before)
         else:
-            print('not enough samples for batchsize')
-        return progress
+            self.qvals[obj_nb] += np.mean(qval_train_before)
+        self.stat_steps[obj_nb] += 1
+        return loss_train_before, qval_train_before
 
     def getQvaluesAndBootstraps(self, exps):
 
@@ -197,17 +185,11 @@ class Controller(object):
         d = {}
         steps = sum(self.stat_steps)
         if sum(self.stat_steps) != 0:
-            d['tderror'] = sum(self.tderrors) / steps
             d['qval'] = sum(self.qvals) / steps
-            d['target'] = sum(self.targets) / steps
-            d['rho'] = self.rho / steps
+            # d['rho'] = self.rho / steps
         for i, s in enumerate(self.stat_steps):
             if s != 0:
-                self.tderrors[i] /= s
-                self.targets[i] /= s
                 self.qvals[i] /= s
             self.stat_steps[i] = 0
-        d['tderrors'] = self.tderrors
         d['qvals'] = self.qvals
-        d['targets'] = self.targets
         return d
