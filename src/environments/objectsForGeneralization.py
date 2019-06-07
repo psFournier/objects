@@ -35,7 +35,7 @@ class ObjectsForGeneralization(Env):
 
     def __init__(self, seed=None):
         self.nbFeatures = 5
-        self.nbActions = 5
+        self.nbActions = 4
         self.fixed_feature_ranges = np.array([
             [1, 2]
         ])
@@ -64,16 +64,16 @@ class ObjectsForGeneralization(Env):
 
     def next_state(self, state, a):
 
-        if a == 1:
+        if a == 0:
             state[2] = np.clip(state[2] + 0.001 * state[4], -0.02, 0.02)
             state[3] = state[3] * 0
-        elif a == 2:
+        elif a == 1:
             state[2] = np.clip(state[2] - 0.001 * state[4], -0.02, 0.02)
             state[3] = state[3] * 0
-        elif a == 3:
+        elif a == 2:
             state[3] = np.clip(state[3] + 0.001 * state[4], -0.02, 0.02)
             state[2] = state[2] * 0
-        elif a == 4:
+        elif a == 3:
             state[3] = np.clip(state[3] - 0.001 * state[4], -0.02, 0.02)
             state[2] = state[2] * 0
         state[0] = np.clip(state[0] + state[2], -0.1, 0.1)
