@@ -1,7 +1,7 @@
 import numpy as np
 from actionSelectors import State_goal_max_action_selector
 from players import Player
-from environments.objectsForGeneralization import Obj
+from environments.objects import Obj
 
 class TDerror_evaluator():
     def __init__(self, agent):
@@ -21,6 +21,51 @@ class TDerror_evaluator():
         targetqvals = rewards + (1 - terminals) * np.max(targetqvals, axis=1)
         reward = np.sqrt(np.mean(np.square(qvals - targetqvals)))
         return reward
+
+class Test_generalisation():
+    def __init__(self, agent):
+        self.agent = agent
+        self.name = 'test_generalization'
+        self.action_selector = State_goal_max_action_selector(agent)
+        self.player = Player(agent)
+        self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(2)
+        self.stat_steps = np.zeros(2)
+
+    def get_reward(self):
+
+        nbep = 10
+        # Beware : here using Obj from (potentially) another env def
+
+        for _ in range(nbep):
+            obj = Obj(self.agent.env,
+                      -1,
+                      np.random.uniform(1.1,1.3))
+            _, r, episodes = self.player._play(obj, self.agent.goal_selector, self.action_selector)
+            if self.stat_steps[0] == 0:
+                self.rewards[0] = r
+            else:
+                self.rewards[0] += r
+            self.stat_steps[0] += episodes
+
+        for _ in range(nbep):
+            obj = Obj(self.agent.env,
+                      -1,
+                      np.random.uniform(1.7, 1.9))
+            _, r, episodes = self.player._play(obj, self.agent.goal_selector, self.action_selector)
+            if self.stat_steps[1] == 0:
+                self.rewards[1] = r
+            else:
+                self.rewards[1] += r
+            self.stat_steps[1] += episodes
+
+    def stats(self):
+        d = {}
+        for i, s in enumerate(self.stat_steps):
+            if s != 0:
+                self.rewards[i] /= s
+            self.stat_steps[i] = 0
+        d['rewards'] = self.rewards
+        return d
 
 class Test_generalisation_one_evaluator():
     def __init__(self, agent):

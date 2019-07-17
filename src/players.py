@@ -3,11 +3,23 @@ import numpy as np
 class Player():
     def __init__(self, agent):
         self.agent = agent
-        self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects+1)
         self.name = 'player'
+        self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects + 1)
         self.stat_steps = np.zeros(agent.env.nbObjects+1)
 
     def play(self, obj, goal_selector, action_selector):
+
+        transitions, r, episodes = self._play(obj, goal_selector, action_selector)
+
+        if self.stat_steps[obj.nb] == 0:
+            self.rewards[obj.nb] = r
+        else:
+            self.rewards[obj.nb] += r
+        self.stat_steps[obj.nb] += episodes
+
+        return transitions, r / episodes
+
+    def _play(self, obj, goal_selector, action_selector):
 
         avgs = self.agent.env.avgs
         spans = self.agent.env.spans
@@ -48,18 +60,12 @@ class Player():
                           'terminal': t}
             transitions[-1].append(transition)
 
-        if self.stat_steps[obj.nb] == 0:
-            self.rewards[obj.nb] = r
-        else:
-            self.rewards[obj.nb] += r
-        self.stat_steps[obj.nb] += episodes
-
-        return transitions, r/episodes
+        return transitions, r, episodes
 
     def stats(self):
         d = {}
         for i, s in enumerate(self.stat_steps):
-            if s !=0:
+            if s != 0:
                 self.rewards[i] /= s
             self.stat_steps[i] = 0
         d['rewards'] = self.rewards

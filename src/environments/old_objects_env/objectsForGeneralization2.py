@@ -37,7 +37,7 @@ class ObjectsForGeneralization2(Env):
         self.nbFeatures = 5
         self.nbActions = 5
         self.fixed_feature_ranges = np.array([
-            [1, 2]
+            [0, 2]
         ])
         self.varying_feature_ranges = np.array([
             [-0.05, 0.05],
@@ -54,8 +54,8 @@ class ObjectsForGeneralization2(Env):
         self.objects = []
         nb = 0
         for i in range(n):
-            if i>=n-2:
-                for j in range(20):
+            if i>=n-1:
+                for j in range(40):
                     self.objects.append(
                         Obj(self,
                             nb,

@@ -109,7 +109,8 @@ if __name__ == '__main__':
     }
     evaluators = {
         'geneone': Test_generalisation_one_evaluator,
-        'geneall': Test_generalisation_all_evaluator
+        'geneall': Test_generalisation_all_evaluator,
+        'generalization': Test_generalisation
     }
     object_selectors = {
         'exp4': EXP4,

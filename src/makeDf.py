@@ -2,9 +2,9 @@ import glob
 import pandas as pd
 import os
 
-DIR = '../log/local/ObjectsForGeneralization2-v0'
+DIR = '../log/cluster/1206'
 ENV = '*'
-runs = glob.glob(os.path.join(DIR, '*'))
+runs = glob.glob(os.path.join(DIR, ENV, '*'))
 frames = []
 
 for run in runs:
@@ -15,7 +15,7 @@ for run in runs:
         config = pd.concat([config] * df.shape[0], ignore_index=True)
         data = pd.concat([df, config], axis=1)
         print(run.split('/'))
-        data['num_run'] = run.split('/')[4]
+        data['num_run'] = run.split('/')[5]
         frames.append(data)
     except:
         print(run, 'not ok')

@@ -115,7 +115,7 @@ class Controller(object):
         states = np.vstack(states)
         goals = np.vstack(goals)
         ## Beware: states and goals here are normalized, so the reward cannot be computed directly
-        # rewards, terminals = self.agent.wrapper.get_r(states, goals)
+        rewards, terminals = self.agent.wrapper.get_r(states, goals)
         # mean_reward = np.mean(rewards)
 
         qvals = self._qvals([states, goals])[0]
@@ -130,8 +130,8 @@ class Controller(object):
                 exp['tq'] = target_qvals[i]
                 exp['pi'] = actionProbs[i]
                 i += 1
-                # exp['reward'] = rewards[i]
-                # exp['terminal'] = terminals[i]
+                exp['reward'] = rewards[i]
+                exp['terminal'] = terminals[i]
             end = {'q': qvals[i], 'tq': target_qvals[i], 'pi': actionProbs[i]}
             nStepExpe.append(end)
             i += 1

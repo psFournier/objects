@@ -98,26 +98,26 @@ class Agent():
                         loss_train_before, qval_train_before = self.model.train(exps, obj.nb)
                         self.train_steps[obj.nb] += 1
 
-                obj_reward = self.evaluator.get_reward()
-                progress = obj_reward - self.last_obj_reward
-                self.last_obj_reward = obj_reward
-                if len(self.progress_reservoir) < 100:
-                    self.progress_reservoir.append(progress)
-                    self.low_progress, self.high_progress = np.quantile(self.progress_reservoir, q=[0.2, 0.8])
-                else:
-                    idx = np.random.randint(ep)
-                    if idx < 100:
-                        self.progress_reservoir[idx] = progress
-                        self.low_progress, self.high_progress = np.quantile(self.progress_reservoir, q=[0.2,0.8])
-                if self.high_progress != self.low_progress:
-                    progress = 2 * (np.clip(progress, self.low_progress, self.high_progress) - self.low_progress) /\
-                        (self.high_progress - self.low_progress) - 1
-                else:
-                    progress = np.clip(progress, -1, 1)
+                # obj_reward = self.evaluator.get_reward()
 
-                self.object_selector.update_weights(obj.nb, progress)
-                    # for expert in self.experts.values():
-                    #     expert.update_probs(obj.nb, progress)
+                # #Paragraph for curriculum building
+                # progress = obj_reward - self.last_obj_reward
+                # self.last_obj_reward = obj_reward
+                # if len(self.progress_reservoir) < 100:
+                #     self.progress_reservoir.append(progress)
+                #     self.low_progress, self.high_progress = np.quantile(self.progress_reservoir, q=[0.2, 0.8])
+                # else:
+                #     idx = np.random.randint(ep)
+                #     if idx < 100:
+                #         self.progress_reservoir[idx] = progress
+                #         self.low_progress, self.high_progress = np.quantile(self.progress_reservoir, q=[0.2,0.8])
+                # if self.high_progress != self.low_progress:
+                #     progress = 2 * (np.clip(progress, self.low_progress, self.high_progress) - self.low_progress) /\
+                #         (self.high_progress - self.low_progress) - 1
+                # else:
+                #     progress = np.clip(progress, -1, 1)
+                # self.object_selector.update_weights(obj.nb, progress)
+
 
             obj = self.env.objects[self.object_selector.select()]
             transitions, play_reward = self.player.play(obj, self.goal_selector, self.action_selector)
@@ -129,7 +129,7 @@ class Agent():
 
             if ep % self.log_freq == 0 and ep > 0:
                 # for evaluator in self.evaluators:
-                #     evaluator.get_reward()
+                self.evaluator.get_reward()
                 self.log()
 
     def stats(self):
