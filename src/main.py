@@ -17,7 +17,7 @@ from agentImit import AgentImit
 from agentOff import AgentOff
 from exp4 import EXP4, Uniform_object_selector, EXP3
 from experts import Reached_states_variance_maximizer_expert, Uniform_expert, LP_expert, Object_expert
-from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator, Test_generalisation_one_evaluator, Test_generalisation_all_evaluator
+from evaluators import Reached_states_variance_evaluator, Reached_goals_variance_evaluator, Test_episode_evaluator, Train_episode_evaluator, Test_generalisation_one_evaluator, Test_generalisation_all_evaluator, Test_generalisation
 from players import Player
 
 help = """
