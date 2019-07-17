@@ -1,2 +1,0 @@
-from environments.objectsId import ObjectsId
-from environments.objectsEasy import ObjectsEasy

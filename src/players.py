@@ -4,8 +4,8 @@ class Player():
     def __init__(self, agent):
         self.agent = agent
         self.name = 'player'
-        self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects + 1)
-        self.stat_steps = np.zeros(agent.env.nbObjects+1)
+        self.rewards = agent.ep_env_steps * agent.wrapper.rNotTerm * np.ones(agent.env.nbObjects)
+        self.stat_steps = np.zeros(agent.env.nbObjects)
 
     def play(self, obj, goal_selector, action_selector):
 

@@ -50,7 +50,7 @@ class Objects(Env):
         self.spans = ranges[:, 1] - ranges[:, 0]
         self.set_objects()
 
-    def set_objects(self, n=0):
+    def set_objects(self):
         self.objects = []
         self.objects.append(Obj(self,
                                 0,

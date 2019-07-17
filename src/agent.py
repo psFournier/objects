@@ -88,7 +88,7 @@ class Agent():
 
     def learn(self):
 
-        for ep in range(self.episodes):
+        for ep in range(1, self.episodes):
 
             if sum(self.env_steps) > 10000:
                 obj = self.env.objects[self.object_selector.select()]

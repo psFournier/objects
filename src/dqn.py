@@ -96,9 +96,9 @@ class Controller(object):
             nStepExpes.append(nStepSeq)
 
         states, goals = [], []
-        for nStepExpe in nStepExpes:
-            first = nStepExpe[0]
-            l = len(nStepExpe)
+        for nStepSeq in nStepExpes:
+            first = nStepSeq[0]
+            l = len(nStepSeq)
 
             # potential_goals = []
             # if first['g'].shape == first['s1'].shape:
@@ -108,9 +108,9 @@ class Controller(object):
             # goals += [g] * (l+1)
 
             goals += [first['g']] * (l+1)
-            for exp in nStepExpe:
+            for exp in nStepSeq:
                 states.append(exp['s0'])
-            states.append(nStepExpe[-1]['s1'])
+            states.append(nStepSeq[-1]['s1'])
 
         states = np.vstack(states)
         goals = np.vstack(goals)

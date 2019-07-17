@@ -33,9 +33,7 @@ Options:
   --nstep VAL              [default: 1]
   --alpha VAL              [default: 0]
   --IS VAL                 [default: no]
-  --targetClip VAL         [default: 0]
   --lambda VAL             [default: 0]
-  --nbObjects VAL          [default: 10]
   --evaluator VAL          [default: geneone]
   --objects VAL            [default: uni]
   --expgamma VAL          [default: 0.1]
@@ -50,7 +48,6 @@ Options:
   --agentEta VAL     [default: 0.1]
   --seed SEED              [default: 1]
   --experts VAL            [default: uni,lp]
-  --nbObjectsTrain VAL     [default: 1]
   --globalEval VAL         [default: tderror]
   
 """
@@ -65,7 +62,7 @@ if __name__ == '__main__':
                               format_strs=['json', 'stdout'])
 
     env, wrapper = make(args['--env'], args)
-    env.set_objects(n=int(args['--nbObjects']))
+    env.set_objects()
 
     # model = Predictor(wrapper, layers=np.array([int(l) for l in args['--layers'].split(',')]),
     #                   dropout=float(args['--dropout']), l2reg=float(args['--l2reg']))
